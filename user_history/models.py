@@ -6,6 +6,17 @@ class User_History(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='history')
     image_uploaded = models.ImageField(upload_to='user_history/')
     restored_image = models.ImageField(upload_to='user_history/restored/')
+    feature_used = models.CharField(
+        max_length=50,
+        choices=[
+            ('SUPER_RESOLUTION', 'Super Resolution'),
+            ('BASIC_FILTER', 'Basic Filter'),
+            ('DE_NOISE', 'Denoise'),
+            ('DE_BLUR', 'Deblur'),
+            ('SHADOW_REMOVAL', 'Shadow Removal'),
+        ],
+        default='BASIC_FILTER',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
