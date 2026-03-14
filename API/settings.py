@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'payments',
     'user_history',
     'Ai_processing',
+    'drf_spectacular',
 ]
 
 
@@ -51,6 +52,14 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'PixelRevive API',
+    'DESCRIPTION': 'API for image processing and user management',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 SIMPLE_JWT = {
@@ -109,14 +118,16 @@ if DATABASE_URL:
             conn_max_age=600,
         )
     }
-else:
-    # Local development fallback — SQLite
+elif DEBUG:
+    # Local development only — SQLite fallback
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+else:
+    raise ValueError("DATABASE_URL environment variable is required in production")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

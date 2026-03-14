@@ -14,6 +14,7 @@ google-auth-httplib2 = "*"
 gunicorn = "*"
 whitenoise = "*"
 dj-database-url = "*"
+drf-spectacular = "*"
 
 [dev-packages]
 

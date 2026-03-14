@@ -1,4 +1,3 @@
-import base64
 import uuid
 from io import BytesIO
 
@@ -23,7 +22,7 @@ class ProcessImageView(APIView):
       - image: the uploaded image file
       - feature: one of SUPER_RESOLUTION, BASIC_FILTER, DE_NOISE, DE_BLUR, SHADOW_REMOVAL
 
-    Returns the processed image as base64 + saves to user history.
+    Returns URLs for the original and processed images + saves to user history.
     """
     permission_classes = [IsAuthenticated]
 
@@ -37,9 +36,6 @@ class ProcessImageView(APIView):
         # Open the uploaded image with Pillow
         try:
             pil_image = Image.open(uploaded_image)
-            # Convert to RGB if necessary (e.g. RGBA PNGs, palette mode)
-            if pil_image.mode not in ('RGB', 'L'):
-                pil_image = pil_image.convert('RGB')
         except Exception:
             return Response(
                 {"error": "Invalid image file. Could not open the image."},
@@ -79,15 +75,14 @@ class ProcessImageView(APIView):
             feature_used=feature,
         )
 
-        # --- Encode processed image to base64 for the response ---
-        processed_buffer.seek(0)
-        b64_image = base64.b64encode(processed_buffer.read()).decode('utf-8')
+        # --- Build full absolute URLs for the images ---
+        original_url = request.build_absolute_uri(history.image_uploaded.url)
+        processed_url = request.build_absolute_uri(history.restored_image.url)
 
         return Response({
             "message": "Image processed successfully",
             "feature_used": feature,
-            "original_image": history.image_uploaded.url,
-            "processed_image": history.restored_image.url,
-            "processed_image_base64": f"data:image/png;base64,{b64_image}",
+            "original_image": original_url,
+            "processed_image": processed_url,
             "history_id": history.id,
         }, status=status.HTTP_200_OK)

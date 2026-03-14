@@ -2,64 +2,56 @@
 Image processing utilities.
 
 Each function takes a PIL Image and returns a processed PIL Image.
-These are PLACEHOLDER implementations using basic Pillow filters.
-Replace them with your actual AI model inference calls.
+Currently all functions return the image UNCHANGED (pass-through).
+Replace each one with your actual AI model inference call.
 """
 
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image
 
 
 def apply_super_resolution(image: Image.Image) -> Image.Image:
     """
     Placeholder for super-resolution AI model.
-    Currently: upscales 2x with LANCZOS resampling + sharpens.
+    Currently: returns image unchanged.
     TODO: Replace with your actual super-resolution model call.
     """
-    width, height = image.size
-    upscaled = image.resize((width * 2, height * 2), Image.LANCZOS)
-    sharpened = upscaled.filter(ImageFilter.SHARPEN)
-    return sharpened
+    return image
 
 
 def apply_basic_filter(image: Image.Image) -> Image.Image:
     """
     Placeholder for basic filter processing.
-    Currently: enhances contrast + color saturation.
+    Currently: returns image unchanged.
     TODO: Replace with your actual filter logic.
     """
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(1.3)
-    enhancer = ImageEnhance.Color(image)
-    image = enhancer.enhance(1.2)
     return image
 
 
 def apply_denoise(image: Image.Image) -> Image.Image:
     """
     Placeholder for denoising AI model.
-    Currently: applies a smooth filter.
+    Currently: returns image unchanged.
     TODO: Replace with your actual denoising model call.
     """
-    return image.filter(ImageFilter.SMOOTH_MORE)
+    return image
 
 
 def apply_deblur(image: Image.Image) -> Image.Image:
     """
     Placeholder for deblurring AI model.
-    Currently: applies an unsharp mask.
+    Currently: returns image unchanged.
     TODO: Replace with your actual deblurring model call.
     """
-    return image.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+    return image
 
 
 def apply_shadow_removal(image: Image.Image) -> Image.Image:
     """
     Placeholder for shadow removal AI model.
-    Currently: brightens the image.
+    Currently: returns image unchanged.
     TODO: Replace with your actual shadow removal model call.
     """
-    enhancer = ImageEnhance.Brightness(image)
-    return enhancer.enhance(1.4)
+    return image
 
 
 # Dispatcher — maps feature name to processing function
