@@ -8,6 +8,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import cloudinary  # type: ignore
+import cloudinary.uploader  # type: ignore
 import dj_database_url  # type: ignore
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +46,8 @@ INSTALLED_APPS = [
     'user_history',
     'Ai_processing',
     'drf_spectacular',
+    'cloudinary_storage',
+    'cloudinary',
 ]
 
 
@@ -169,6 +173,24 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# ---------- Cloudinary (persistent media storage) ----------
+_cloudinary_url = os.getenv("CLOUDINARY_URL")
+if _cloudinary_url:
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    # django-cloudinary-storage reads these settings automatically
+    # CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+    import re as _re
+    _m = _re.match(
+        r'cloudinary://(?P<key>[^:]+):(?P<secret>[^@]+)@(?P<name>.+)',
+        _cloudinary_url,
+    )
+    if _m:
+        CLOUDINARY_STORAGE = {
+            'CLOUD_NAME': _m.group('name'),
+            'API_KEY': _m.group('key'),
+            'API_SECRET': _m.group('secret'),
+        }
 
 
 

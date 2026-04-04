@@ -76,8 +76,10 @@ class ProcessImageView(APIView):
         )
 
         # --- Build full absolute URLs for the images ---
-        original_url = request.build_absolute_uri(history.image_uploaded.url)
-        processed_url = request.build_absolute_uri(history.restored_image.url)
+        orig_url = history.image_uploaded.url
+        proc_url = history.restored_image.url
+        original_url = orig_url if orig_url.startswith('http') else request.build_absolute_uri(orig_url)
+        processed_url = proc_url if proc_url.startswith('http') else request.build_absolute_uri(proc_url)
 
         return Response({
             "message": "Image processed successfully",
