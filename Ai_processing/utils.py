@@ -84,10 +84,10 @@ def apply_bilateral_filter(image: Image.Image) -> Image.Image:
     Good for reducing noise while keeping details.
     """
     img = _pil_to_cv2(image)
-    # d=9: diameter of pixel neighborhood
-    # sigmaColor=75: range filter (color similarity)
-    # sigmaSpace=75: spatial filter (coordinate proximity)
-    filtered = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
+    # d=15: diameter of pixel neighborhood (larger = stronger)
+    # sigmaColor=150: range filter (color similarity)
+    # sigmaSpace=150: spatial filter (coordinate proximity)
+    filtered = cv2.bilateralFilter(img, d=15, sigmaColor=150, sigmaSpace=150)
     return _cv2_to_pil(filtered)
 
 
@@ -97,9 +97,9 @@ def apply_gaussian_filter(image: Image.Image) -> Image.Image:
     Good for reducing Gaussian noise.
     """
     img = _pil_to_cv2(image)
-    # (5, 5): kernel size — must be odd numbers
+    # (15, 15): kernel size — larger = more blur
     # 0: sigma calculated automatically from kernel size
-    filtered = cv2.GaussianBlur(img, (5, 5), 0)
+    filtered = cv2.GaussianBlur(img, (15, 15), 0)
     return _cv2_to_pil(filtered)
 
 
@@ -110,10 +110,10 @@ def apply_guided_filter(image: Image.Image) -> Image.Image:
     """
     img = _pil_to_cv2(image)
     # Use the image itself as the guide
-    # radius=8: filter window size
-    # eps=0.1*(255**2): regularisation (controls smoothing vs edge-preservation)
+    # radius=16: larger filter window = stronger smoothing
+    # eps=0.4*(255**2): higher = more smoothing
     filtered = cv2.ximgproc.guidedFilter(
-        guide=img, src=img, radius=8, eps=0.1 * (255 ** 2)
+        guide=img, src=img, radius=16, eps=0.4 * (255 ** 2)
     )
     return _cv2_to_pil(filtered)
 
@@ -124,8 +124,8 @@ def apply_median_filter(image: Image.Image) -> Image.Image:
     Best for removing salt-and-pepper / impulse noise.
     """
     img = _pil_to_cv2(image)
-    # ksize=5: kernel size — must be odd
-    filtered = cv2.medianBlur(img, ksize=5)
+    # ksize=11: kernel size — larger = stronger noise removal
+    filtered = cv2.medianBlur(img, ksize=11)
     return _cv2_to_pil(filtered)
 
 
