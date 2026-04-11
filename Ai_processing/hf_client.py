@@ -31,10 +31,19 @@ def _get_client(space_id: str) -> Client:
     if space_id not in _clients:
         logger.info("Connecting to HF Space: %s", space_id)
 
-        _clients[space_id] = Client(
-            space_id,
-            hf_token=os.getenv("HF_TOKEN")  # ← Added token support
-        )
+        token = os.getenv("HF_TOKEN")
+
+        try:
+            # Works with most gradio_client versions
+            if token:
+                _clients[space_id] = Client(space_id, token=token)
+            else:
+                _clients[space_id] = Client(space_id)
+
+        except TypeError:
+            # Fallback for very old versions
+            logger.warning("Token not supported in this gradio_client version")
+            _clients[space_id] = Client(space_id)
 
         logger.info("Connected to HF Space: %s", space_id)
 
@@ -57,20 +66,34 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
     try:
         client = _get_client(HF_SPACES["DE_NOISE"])
 
-        # 👇 ADD DEBUG HERE
-        print("HF API INFO:")
-        print(client.view_api())
+        # Debug API endpoints
+        logger.info("HF API INFO:")
+        try:
+            logger.info(client.view_api())
+        except Exception:
+            logger.warning("Could not fetch API info")
 
         logger.info("Sending image to HF Space...")
 
-        result = client.predict(
-            tmp_path,
-            api_name="/predict",
-        )
+        # Try standard call first
+        try:
+            result = client.predict(
+                tmp_path,
+                api_name="/predict"
+            )
+        except Exception:
+            # fallback
+            logger.warning("Trying fallback predict call...")
+            result = client.predict(tmp_path)
 
         logger.info("Received response from HF Space")
 
+        # Some spaces return tuple/list
+        if isinstance(result, (list, tuple)):
+            result = result[0]
+
         processed_image = Image.open(result).convert("RGB")
+
         return processed_image
 
     except Exception as e:
@@ -78,5 +101,6 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
         raise
 
     finally:
+        # Clean up temp file
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
