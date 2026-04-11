@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, serializers as drf_serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
+from drf_spectacular.utils import extend_schema, inline_serializer
 import logging
 
 from .models import EmailVerificationOTP, PasswordResetOTP, User
@@ -124,6 +125,10 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class RequestPasswordResetView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=RequestPasswordResetSerializer,
+        responses={200: inline_serializer('PasswordResetOTPSent', fields={'detail': drf_serializers.CharField()})},
+    )
     def post(self, request):
         serializer = RequestPasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -165,6 +170,10 @@ class RequestPasswordResetView(APIView):
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=SetNewPasswordSerializer,
+        responses={200: inline_serializer('PasswordResetDone', fields={'detail': drf_serializers.CharField()})},
+    )
     def post(self, request):
         serializer = SetNewPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -183,6 +192,16 @@ class GoogleContinueView(APIView):
             "refresh": str(refresh),
         }
 
+    @extend_schema(
+        request=GoogleLoginSerializer,
+        responses={200: inline_serializer('GoogleLoginResponse', fields={
+            'message': drf_serializers.CharField(),
+            'user_id': drf_serializers.IntegerField(),
+            'verified': drf_serializers.BooleanField(),
+            'access': drf_serializers.CharField(),
+            'refresh': drf_serializers.CharField(),
+        })},
+    )
     def post(self, request):
         serializer = GoogleLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

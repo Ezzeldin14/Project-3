@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from .models import User_History
 
@@ -31,8 +32,10 @@ class UserHistorySerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(url)
         return url
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_image_uploaded(self, obj):
         return self._absolute_url(obj.image_uploaded, self.context.get('request'))
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_restored_image(self, obj):
         return self._absolute_url(obj.restored_image, self.context.get('request'))

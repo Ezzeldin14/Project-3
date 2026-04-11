@@ -3,10 +3,11 @@ from io import BytesIO
 
 from django.core.files.base import ContentFile
 from PIL import Image
-from rest_framework import status
+from rest_framework import serializers as drf_serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from user_history.models import User_History
 
@@ -26,6 +27,16 @@ class ProcessImageView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=ImageProcessSerializer,
+        responses={200: inline_serializer('ProcessImageResponse', fields={
+            'message': drf_serializers.CharField(),
+            'feature_used': drf_serializers.CharField(),
+            'original_image': drf_serializers.URLField(),
+            'processed_image': drf_serializers.URLField(),
+            'history_id': drf_serializers.IntegerField(),
+        })},
+    )
     def post(self, request):
         serializer = ImageProcessSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
