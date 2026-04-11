@@ -7,9 +7,11 @@ heavy models locally. This keeps Railway RAM usage minimal.
 
 import io
 import logging
-import requests
+import os
+import tempfile
 
 import numpy as np
+import requests
 from PIL import Image
 from gradio_client import Client
 
@@ -28,8 +30,14 @@ def _get_client(space_id: str) -> Client:
     """Return a cached Gradio client for the given HF Space."""
     if space_id not in _clients:
         logger.info("Connecting to HF Space: %s", space_id)
-        _clients[space_id] = Client(space_id)
+
+        _clients[space_id] = Client(
+            space_id,
+            hf_token=os.getenv("HF_TOKEN")  # ← Added token support
+        )
+
         logger.info("Connected to HF Space: %s", space_id)
+
     return _clients[space_id]
 
 
@@ -41,10 +49,7 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
     if image.mode != "RGB":
         image = image.convert("RGB")
 
-    # Save image to a temporary file-like buffer (Gradio client needs a file path)
-    import tempfile
-    import os
-
+    # Save image to temporary file
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         image.save(tmp, format="PNG")
         tmp_path = tmp.name
@@ -52,15 +57,24 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
     try:
         client = _get_client(HF_SPACES["DE_NOISE"])
 
-        # Call the Gradio predict function — it takes an image and returns an image
+        logger.info("Sending image to HF Space...")
+
+        # Call Gradio API
         result = client.predict(
-            input_img=tmp_path,
-            api_name="/predict",
+            tmp_path,
+            api_name="/predict",   # keep this (change if your endpoint differs)
         )
 
-        # result is a file path to the processed image
+        logger.info("Received response from HF Space")
+
+        # result is usually a file path
         processed_image = Image.open(result).convert("RGB")
+
         return processed_image
+
+    except Exception as e:
+        logger.exception("HF Denoise failed: %s", str(e))
+        raise
 
     finally:
         # Clean up temp file
