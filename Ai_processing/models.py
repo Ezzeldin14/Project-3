@@ -4,11 +4,10 @@ from django.db import models
 
 class Ai_feature(models.Model):
     name = models.CharField(max_length=100, choices=[
-        ('SUPER_RESOLUTION', 'ruper resolution'),
-        ('BASIC_FILTER', 'basic filter'),
-        ('DE_NOISE', 'dE noise'),
-        ('DE_BLUR', 'dE blur'),
-        ('SHADOW_REMOVAL', 'Shadow removal'),
+        ('SUPER_RESOLUTION', 'Super Resolution'),
+        ('COLORIZATION', 'Colorization'),
+        ('DE_NOISE', 'Denoise'),
+        ('DE_BLUR', 'Deblur'),
     ])
     
     description = models.TextField(blank=True, null=True)

@@ -21,7 +21,7 @@ class ProcessImageView(APIView):
 
     Accepts a multipart/form-data request with:
       - image: the uploaded image file
-      - feature: one of SUPER_RESOLUTION, BASIC_FILTER, DE_NOISE, DE_BLUR, SHADOW_REMOVAL
+      - feature: one of SUPER_RESOLUTION, COLORIZATION, DE_NOISE, DE_BLUR
 
     Returns URLs for the original and processed images + saves to user history.
     """

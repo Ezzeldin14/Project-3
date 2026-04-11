@@ -2,10 +2,9 @@ from rest_framework import serializers
 
 FEATURE_CHOICES = [
     ('SUPER_RESOLUTION', 'Super Resolution'),
-    ('BASIC_FILTER', 'Basic Filter'),
+    ('COLORIZATION', 'Colorization'),
     ('DE_NOISE', 'Denoise'),
     ('DE_BLUR', 'Deblur'),
-    ('SHADOW_REMOVAL', 'Shadow Removal'),
 ]
 
 

@@ -10,12 +10,11 @@ class User_History(models.Model):
         max_length=50,
         choices=[
             ('SUPER_RESOLUTION', 'Super Resolution'),
-            ('BASIC_FILTER', 'Basic Filter'),
+            ('COLORIZATION', 'Colorization'),
             ('DE_NOISE', 'Denoise'),
             ('DE_BLUR', 'Deblur'),
-            ('SHADOW_REMOVAL', 'Shadow Removal'),
         ],
-        default='BASIC_FILTER',
+        default='DE_NOISE',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     

@@ -17,6 +17,9 @@ dj-database-url = "*"
 drf-spectacular = "*"
 cloudinary = "*"
 django-cloudinary-storage = "*"
+onnxruntime = "*"
+opencv-python-headless = "*"
+numpy = "*"
 
 [dev-packages]
 

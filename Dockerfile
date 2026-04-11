@@ -5,12 +5,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies for psycopg
+# Install system dependencies for psycopg and OpenCV
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     libffi-dev \
     python3-dev \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Pipfile for dependency installation
