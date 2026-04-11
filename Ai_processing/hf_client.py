@@ -57,19 +57,20 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
     try:
         client = _get_client(HF_SPACES["DE_NOISE"])
 
+        # 👇 ADD DEBUG HERE
+        print("HF API INFO:")
+        print(client.view_api())
+
         logger.info("Sending image to HF Space...")
 
-        # Call Gradio API
         result = client.predict(
             tmp_path,
-            api_name="/predict",   # keep this (change if your endpoint differs)
+            api_name="/predict",
         )
 
         logger.info("Received response from HF Space")
 
-        # result is usually a file path
         processed_image = Image.open(result).convert("RGB")
-
         return processed_image
 
     except Exception as e:
@@ -77,6 +78,5 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
         raise
 
     finally:
-        # Clean up temp file
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
