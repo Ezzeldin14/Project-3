@@ -6,13 +6,38 @@ Each function takes a PIL Image and returns a processed PIL Image.
 - DE_BLUR: Placeholder — returns image unchanged (model not yet integrated).
 - COLORIZATION: Placeholder — returns image unchanged (model not yet integrated).
 - SUPER_RESOLUTION: Placeholder — returns image unchanged (model not yet integrated).
+- BILATERAL_FILTER: OpenCV bilateral filter (edge-preserving smoothing).
+- GAUSSIAN_FILTER: OpenCV Gaussian blur.
+- GUIDED_FILTER: OpenCV guided filter (edge-aware smoothing).
+- MEDIAN_FILTER: OpenCV median blur (salt-and-pepper noise removal).
 """
 
+import cv2
 import numpy as np
 from PIL import Image
 
 from .model_loader import run_nafnet_denoise
 
+
+# ---------------------------------------------------------------------------
+# Helper: PIL ↔ OpenCV conversion
+# ---------------------------------------------------------------------------
+
+def _pil_to_cv2(image: Image.Image) -> np.ndarray:
+    """Convert PIL Image (RGB) to OpenCV array (BGR)."""
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+
+def _cv2_to_pil(img_bgr: np.ndarray) -> Image.Image:
+    """Convert OpenCV array (BGR) to PIL Image (RGB)."""
+    return Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
+
+
+# ---------------------------------------------------------------------------
+# AI-powered features (ONNX models)
+# ---------------------------------------------------------------------------
 
 def apply_super_resolution(image: Image.Image) -> Image.Image:
     """
@@ -33,21 +58,11 @@ def apply_colorization(image: Image.Image) -> Image.Image:
 def apply_denoise(image: Image.Image) -> Image.Image:
     """
     Denoise an image using the NAFNet ONNX model.
-
-    Converts the PIL Image to a NumPy array, runs NAFNet inference,
-    and returns the denoised result as a PIL Image.
     """
-    # Ensure RGB mode
     if image.mode != "RGB":
         image = image.convert("RGB")
-
-    # PIL → NumPy (H, W, C) uint8
     img_np = np.array(image)
-
-    # Run NAFNet denoising
     denoised_np = run_nafnet_denoise(img_np)
-
-    # NumPy → PIL
     return Image.fromarray(denoised_np)
 
 
@@ -59,12 +74,74 @@ def apply_deblur(image: Image.Image) -> Image.Image:
     return image
 
 
+# ---------------------------------------------------------------------------
+# Basic OpenCV filters
+# ---------------------------------------------------------------------------
+
+def apply_bilateral_filter(image: Image.Image) -> Image.Image:
+    """
+    Bilateral filter — smooths the image while preserving sharp edges.
+    Good for reducing noise while keeping details.
+    """
+    img = _pil_to_cv2(image)
+    # d=9: diameter of pixel neighborhood
+    # sigmaColor=75: range filter (color similarity)
+    # sigmaSpace=75: spatial filter (coordinate proximity)
+    filtered = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
+    return _cv2_to_pil(filtered)
+
+
+def apply_gaussian_filter(image: Image.Image) -> Image.Image:
+    """
+    Gaussian blur — smooths the image uniformly.
+    Good for reducing Gaussian noise.
+    """
+    img = _pil_to_cv2(image)
+    # (5, 5): kernel size — must be odd numbers
+    # 0: sigma calculated automatically from kernel size
+    filtered = cv2.GaussianBlur(img, (5, 5), 0)
+    return _cv2_to_pil(filtered)
+
+
+def apply_guided_filter(image: Image.Image) -> Image.Image:
+    """
+    Guided filter — edge-aware smoothing using the image itself as guide.
+    Preserves edges better than bilateral filter.
+    """
+    img = _pil_to_cv2(image)
+    # Use the image itself as the guide
+    # radius=8: filter window size
+    # eps=0.1*(255**2): regularisation (controls smoothing vs edge-preservation)
+    filtered = cv2.ximgproc.guidedFilter(
+        guide=img, src=img, radius=8, eps=0.1 * (255 ** 2)
+    )
+    return _cv2_to_pil(filtered)
+
+
+def apply_median_filter(image: Image.Image) -> Image.Image:
+    """
+    Median filter — replaces each pixel with median of its neighbors.
+    Best for removing salt-and-pepper / impulse noise.
+    """
+    img = _pil_to_cv2(image)
+    # ksize=5: kernel size — must be odd
+    filtered = cv2.medianBlur(img, ksize=5)
+    return _cv2_to_pil(filtered)
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher — maps feature name to processing function
+# ---------------------------------------------------------------------------
+
 PROCESSING_FUNCTIONS = {
     'SUPER_RESOLUTION': apply_super_resolution,
     'COLORIZATION': apply_colorization,
     'DE_NOISE': apply_denoise,
     'DE_BLUR': apply_deblur,
+    'BILATERAL_FILTER': apply_bilateral_filter,
+    'GAUSSIAN_FILTER': apply_gaussian_filter,
+    'GUIDED_FILTER': apply_guided_filter,
+    'MEDIAN_FILTER': apply_median_filter,
 }
 
 
@@ -74,7 +151,8 @@ def process_image(image: Image.Image, feature: str) -> Image.Image:
 
     Args:
         image: PIL Image to process.
-        feature: One of SUPER_RESOLUTION, COLORIZATION, DE_NOISE, DE_BLUR.
+        feature: One of SUPER_RESOLUTION, COLORIZATION, DE_NOISE, DE_BLUR,
+                 BILATERAL_FILTER, GAUSSIAN_FILTER, GUIDED_FILTER, MEDIAN_FILTER.
 
     Returns:
         Processed PIL Image.

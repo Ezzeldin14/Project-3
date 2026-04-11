@@ -18,7 +18,7 @@ drf-spectacular = "*"
 cloudinary = "*"
 django-cloudinary-storage = "*"
 onnxruntime = "*"
-opencv-python-headless = "*"
+opencv-contrib-python-headless = "*"
 numpy = "*"
 
 [dev-packages]

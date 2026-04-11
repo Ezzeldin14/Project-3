@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "55cc72b1dc3489fa486814663a103f60d4049babfcb0299be62dc0f799b4ee40"
+            "sha256": "15ba37ec31e98ab6062ebc9b5a02e93b46f7ef36398e7e313a91bffc8acf6caf"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -611,16 +611,16 @@
             "markers": "python_version >= '3.11'",
             "version": "==1.24.4"
         },
-        "opencv-python-headless": {
+        "opencv-contrib-python-headless": {
             "hashes": [
-                "sha256:0525a3d2c0b46c611e2130b5fdebc94cf404845d8fa64d2f3a3b679572a5bd22",
-                "sha256:0bd48544f77c68b2941392fcdf9bcd2b9cdf00e98cb8c29b2455d194763cf99e",
-                "sha256:1a7d040ac656c11b8c38677cc8cccdc149f98535089dbe5b081e80a4e5903209",
-                "sha256:3e0a6f0a37994ec6ce5f59e936be21d5d6384a4556f2d2da9c2f9c5dc948394c",
-                "sha256:5c8cfc8e87ed452b5cecb9419473ee5560a989859fe1d10d1ce11ae87b09a2cb",
-                "sha256:77a82fe35ddcec0f62c15f2ba8a12ecc2ed4207c17b0902c7a3151ae29f37fb6",
-                "sha256:a7cf08e5b191f4ebb530791acc0825a7986e0d0dee2a3c491184bd8599848a4b",
-                "sha256:eb60e36b237b1ebd40a912da5384b348df8ed534f6f644d8e0b4f103e272ba7d"
+                "sha256:449c1f00a685a3a7dff8d6fa93a70fbfe0de5537c24358ea03a1d996d12b33e8",
+                "sha256:696a6dd84d309a499efc63644e375f035447b1da777faa2954f2dea7626cc0e7",
+                "sha256:79e503b77880d806a1b106ff8182c6f898347ccfd1db58ffc9a6369acc236c4c",
+                "sha256:9e26469baed9069f627ea56fa46819690c4545580362071dd09f1dcf47a40f2f",
+                "sha256:b0467988c2d56c283b00fb808e0b57f5db2e3ca7743164a3b3efc733bfa03d3a",
+                "sha256:c9b028adc04f6579f37227eb1d648bead14fd6fefc58da86df37c8320351f7bd",
+                "sha256:cdd974b34801f24735d18b1057cfaab1698d5cb02c9bba01dab7dc47201f2ef6",
+                "sha256:dcbb12d04ae74f5dcd782e3b166e1894c6fbdfaaf30866588746205d2a0cde5a"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.6'",
