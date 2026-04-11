@@ -2,7 +2,7 @@
 Image processing utilities.
 
 Each function takes a PIL Image and returns a processed PIL Image.
-- DE_NOISE: Uses NAFNet ONNX model for AI-powered denoising.
+- DE_NOISE: Calls HuggingFace Space API (NAFNet model hosted remotely).
 - DE_BLUR: Placeholder — returns image unchanged (model not yet integrated).
 - COLORIZATION: Placeholder — returns image unchanged (model not yet integrated).
 - SUPER_RESOLUTION: Placeholder — returns image unchanged (model not yet integrated).
@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from .model_loader import run_nafnet_denoise
+from .hf_client import run_hf_denoise
 
 
 # ---------------------------------------------------------------------------
@@ -57,13 +57,10 @@ def apply_colorization(image: Image.Image) -> Image.Image:
 
 def apply_denoise(image: Image.Image) -> Image.Image:
     """
-    Denoise an image using the NAFNet ONNX model.
+    Denoise an image using NAFNet model hosted on HuggingFace Space.
+    Sends the image to HF, model runs remotely, returns processed image.
     """
-    if image.mode != "RGB":
-        image = image.convert("RGB")
-    img_np = np.array(image)
-    denoised_np = run_nafnet_denoise(img_np)
-    return Image.fromarray(denoised_np)
+    return run_hf_denoise(image)
 
 
 def apply_deblur(image: Image.Image) -> Image.Image:

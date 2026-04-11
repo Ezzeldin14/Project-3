@@ -20,6 +20,7 @@ django-cloudinary-storage = "*"
 onnxruntime = "*"
 opencv-contrib-python-headless = "*"
 numpy = "*"
+gradio-client = "*"
 
 [dev-packages]
 
