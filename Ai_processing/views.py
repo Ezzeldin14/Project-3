@@ -1,3 +1,4 @@
+import logging
 import uuid
 from io import BytesIO
 
@@ -8,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer
+
+logger = logging.getLogger(__name__)
 
 from user_history.models import User_History
 
@@ -60,6 +63,12 @@ class ProcessImageView(APIView):
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.exception("Image processing failed for feature '%s': %s", feature, e)
+            return Response(
+                {"error": f"Processing failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         # --- Save the original uploaded image as a Django file ---
