@@ -13,7 +13,7 @@ import tempfile
 import numpy as np
 import requests
 from PIL import Image
-from gradio_client import Client
+from gradio_client import Client, handle_file
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ _clients: dict[str, Client] = {}
 
 # Space URLs for each AI feature
 HF_SPACES = {
-    "DE_NOISE": "EhabByte/finalfrfr",
+    "DE_BLUR": "EhabByte/finalfrfr",
 }
 
 
@@ -50,9 +50,9 @@ def _get_client(space_id: str) -> Client:
     return _clients[space_id]
 
 
-def run_hf_denoise(image: Image.Image) -> Image.Image:
+def run_hf_deblur(image: Image.Image) -> Image.Image:
     """
-    Send an image to the HF Space for denoising and return the result.
+    Send an image to the HF Space for deblurring and return the result.
     """
     # Ensure RGB
     if image.mode != "RGB":
@@ -64,7 +64,7 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
         tmp_path = tmp.name
 
     try:
-        client = _get_client(HF_SPACES["DE_NOISE"])
+        client = _get_client(HF_SPACES["DE_BLUR"])
 
         # Debug API endpoints
         logger.info("HF API INFO:")
@@ -75,16 +75,20 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
 
         logger.info("Sending image to HF Space...")
 
-        # Try standard call first
+        # Use handle_file() to properly wrap the file path for the Gradio API.
+        # Passing a raw path string causes a Pydantic validation error
+        # ("Input should be a valid dictionary or instance of ImageData").
+        file_input = handle_file(tmp_path)
+
         try:
             result = client.predict(
-                tmp_path,
+                file_input,
                 api_name="/predict"
             )
         except Exception:
             # fallback
             logger.warning("Trying fallback predict call...")
-            result = client.predict(tmp_path)
+            result = client.predict(file_input)
 
         logger.info("Received response from HF Space")
 
@@ -97,7 +101,7 @@ def run_hf_denoise(image: Image.Image) -> Image.Image:
         return processed_image
 
     except Exception as e:
-        logger.exception("HF Denoise failed: %s", str(e))
+        logger.exception("HF Deblur failed: %s", str(e))
         raise
 
     finally:

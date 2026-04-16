@@ -2,8 +2,7 @@
 Image processing utilities.
 
 Each function takes a PIL Image and returns a processed PIL Image.
-- DE_NOISE: Calls HuggingFace Space API (NAFNet model hosted remotely).
-- DE_BLUR: Placeholder — returns image unchanged (model not yet integrated).
+- DE_BLUR: Calls HuggingFace Space API (NAFNet model hosted remotely).
 - COLORIZATION: Placeholder — returns image unchanged (model not yet integrated).
 - SUPER_RESOLUTION: Placeholder — returns image unchanged (model not yet integrated).
 - BILATERAL_FILTER: OpenCV bilateral filter (edge-preserving smoothing).
@@ -16,7 +15,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from .hf_client import run_hf_denoise
+from .hf_client import run_hf_deblur
 
 
 # ---------------------------------------------------------------------------
@@ -55,20 +54,12 @@ def apply_colorization(image: Image.Image) -> Image.Image:
     return image
 
 
-def apply_denoise(image: Image.Image) -> Image.Image:
-    """
-    Denoise an image using NAFNet model hosted on HuggingFace Space.
-    Sends the image to HF, model runs remotely, returns processed image.
-    """
-    return run_hf_denoise(image)
-
-
 def apply_deblur(image: Image.Image) -> Image.Image:
     """
-    Placeholder for deblurring AI model.
-    TODO: Replace with your actual deblurring model call.
+    Deblur an image using NAFNet model hosted on HuggingFace Space.
+    Sends the image to HF, model runs remotely, returns processed image.
     """
-    return image
+    return run_hf_deblur(image)
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +124,6 @@ def apply_median_filter(image: Image.Image) -> Image.Image:
 PROCESSING_FUNCTIONS = {
     'SUPER_RESOLUTION': apply_super_resolution,
     'COLORIZATION': apply_colorization,
-    'DE_NOISE': apply_denoise,
     'DE_BLUR': apply_deblur,
     'BILATERAL_FILTER': apply_bilateral_filter,
     'GAUSSIAN_FILTER': apply_gaussian_filter,
@@ -148,7 +138,7 @@ def process_image(image: Image.Image, feature: str) -> Image.Image:
 
     Args:
         image: PIL Image to process.
-        feature: One of SUPER_RESOLUTION, COLORIZATION, DE_NOISE, DE_BLUR,
+        feature: One of SUPER_RESOLUTION, COLORIZATION, DE_BLUR,
                  BILATERAL_FILTER, GAUSSIAN_FILTER, GUIDED_FILTER, MEDIAN_FILTER.
 
     Returns:

@@ -3,7 +3,6 @@ from rest_framework import serializers
 FEATURE_CHOICES = [
     ('SUPER_RESOLUTION', 'Super Resolution'),
     ('COLORIZATION', 'Colorization'),
-    ('DE_NOISE', 'Denoise'),
     ('DE_BLUR', 'Deblur'),
     ('BILATERAL_FILTER', 'Bilateral Filter'),
     ('GAUSSIAN_FILTER', 'Gaussian Filter'),

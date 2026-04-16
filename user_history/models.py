@@ -11,14 +11,13 @@ class User_History(models.Model):
         choices=[
             ('SUPER_RESOLUTION', 'Super Resolution'),
             ('COLORIZATION', 'Colorization'),
-            ('DE_NOISE', 'Denoise'),
             ('DE_BLUR', 'Deblur'),
             ('BILATERAL_FILTER', 'Bilateral Filter'),
             ('GAUSSIAN_FILTER', 'Gaussian Filter'),
             ('GUIDED_FILTER', 'Guided Filter'),
             ('MEDIAN_FILTER', 'Median Filter'),
         ],
-        default='DE_NOISE',
+        default='DE_BLUR',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     
