@@ -1,4 +1,5 @@
 import logging
+import traceback
 import uuid
 from io import BytesIO
 
@@ -41,70 +42,73 @@ class ProcessImageView(APIView):
         })},
     )
     def post(self, request):
-        serializer = ImageProcessSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        uploaded_image = serializer.validated_data['image']
-        feature = serializer.validated_data['feature']
-
-        # Open the uploaded image with Pillow
         try:
-            pil_image = Image.open(uploaded_image)
-        except Exception:
-            return Response(
-                {"error": "Invalid image file. Could not open the image."},
-                status=status.HTTP_400_BAD_REQUEST,
+            serializer = ImageProcessSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            uploaded_image = serializer.validated_data['image']
+            feature = serializer.validated_data['feature']
+
+            # Open the uploaded image with Pillow
+            try:
+                pil_image = Image.open(uploaded_image)
+            except Exception:
+                return Response(
+                    {"error": "Invalid image file. Could not open the image."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Process the image
+            try:
+                processed_pil = process_image(pil_image, feature)
+            except ValueError as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # --- Save the original uploaded image as a Django file ---
+            unique_id = uuid.uuid4().hex[:12]
+            original_name = f"original_{unique_id}.png"
+
+            # Reset file pointer and save original
+            uploaded_image.seek(0)
+            original_content = ContentFile(uploaded_image.read(), name=original_name)
+
+            # --- Save the processed image as a Django file ---
+            processed_buffer = BytesIO()
+            processed_pil.save(processed_buffer, format='PNG')
+            processed_buffer.seek(0)
+
+            processed_name = f"processed_{unique_id}.png"
+            processed_content = ContentFile(processed_buffer.read(), name=processed_name)
+
+            # --- Create User_History record ---
+            history = User_History.objects.create(
+                user=request.user,
+                image_uploaded=original_content,
+                restored_image=processed_content,
+                feature_used=feature,
             )
 
-        # Process the image
-        try:
-            processed_pil = process_image(pil_image, feature)
-        except ValueError as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # --- Build full absolute URLs for the images ---
+            orig_url = history.image_uploaded.url
+            proc_url = history.restored_image.url
+            original_url = orig_url if orig_url.startswith('http') else request.build_absolute_uri(orig_url)
+            processed_url = proc_url if proc_url.startswith('http') else request.build_absolute_uri(proc_url)
+
+            return Response({
+                "message": "Image processed successfully",
+                "feature_used": feature,
+                "original_image": original_url,
+                "processed_image": processed_url,
+                "history_id": history.id,
+            }, status=status.HTTP_200_OK)
+
         except Exception as e:
-            logger.exception("Image processing failed for feature '%s': %s", feature, e)
+            tb = traceback.format_exc()
+            logger.exception("Unhandled error in ProcessImageView: %s", e)
             return Response(
-                {"error": f"Processing failed: {str(e)}"},
+                {"error": f"Processing failed: {str(e)}", "traceback": tb},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        # --- Save the original uploaded image as a Django file ---
-        unique_id = uuid.uuid4().hex[:12]
-        original_name = f"original_{unique_id}.png"
-
-        # Reset file pointer and save original
-        uploaded_image.seek(0)
-        original_content = ContentFile(uploaded_image.read(), name=original_name)
-
-        # --- Save the processed image as a Django file ---
-        processed_buffer = BytesIO()
-        processed_pil.save(processed_buffer, format='PNG')
-        processed_buffer.seek(0)
-
-        processed_name = f"processed_{unique_id}.png"
-        processed_content = ContentFile(processed_buffer.read(), name=processed_name)
-
-        # --- Create User_History record ---
-        history = User_History.objects.create(
-            user=request.user,
-            image_uploaded=original_content,
-            restored_image=processed_content,
-            feature_used=feature,
-        )
-
-        # --- Build full absolute URLs for the images ---
-        orig_url = history.image_uploaded.url
-        proc_url = history.restored_image.url
-        original_url = orig_url if orig_url.startswith('http') else request.build_absolute_uri(orig_url)
-        processed_url = proc_url if proc_url.startswith('http') else request.build_absolute_uri(proc_url)
-
-        return Response({
-            "message": "Image processed successfully",
-            "feature_used": feature,
-            "original_image": original_url,
-            "processed_image": processed_url,
-            "history_id": history.id,
-        }, status=status.HTTP_200_OK)
