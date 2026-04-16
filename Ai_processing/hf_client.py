@@ -10,15 +10,12 @@ import logging
 import os
 import tempfile
 
-import numpy as np
-import requests
 from PIL import Image
-from gradio_client import Client, handle_file
 
 logger = logging.getLogger(__name__)
 
 # ── Hugging Face Space clients (lazy-loaded singletons) ──────────────────────
-_clients: dict[str, Client] = {}
+_clients: dict[str, object] = {}
 
 # Space URLs for each AI feature
 HF_SPACES = {
@@ -26,22 +23,21 @@ HF_SPACES = {
 }
 
 
-def _get_client(space_id: str) -> Client:
+def _get_client(space_id: str):
     """Return a cached Gradio client for the given HF Space."""
+    from gradio_client import Client  # lazy import
+
     if space_id not in _clients:
         logger.info("Connecting to HF Space: %s", space_id)
 
         token = os.getenv("HF_TOKEN")
 
         try:
-            # Works with most gradio_client versions
             if token:
                 _clients[space_id] = Client(space_id, token=token)
             else:
                 _clients[space_id] = Client(space_id)
-
         except TypeError:
-            # Fallback for very old versions
             logger.warning("Token not supported in this gradio_client version")
             _clients[space_id] = Client(space_id)
 
@@ -54,6 +50,8 @@ def run_hf_deblur(image: Image.Image) -> Image.Image:
     """
     Send an image to the HF Space for deblurring and return the result.
     """
+    from gradio_client import handle_file  # lazy import
+
     # Ensure RGB
     if image.mode != "RGB":
         image = image.convert("RGB")
@@ -66,18 +64,9 @@ def run_hf_deblur(image: Image.Image) -> Image.Image:
     try:
         client = _get_client(HF_SPACES["DE_BLUR"])
 
-        # Debug API endpoints
-        logger.info("HF API INFO:")
-        try:
-            logger.info(client.view_api())
-        except Exception:
-            logger.warning("Could not fetch API info")
-
-        logger.info("Sending image to HF Space...")
+        logger.info("Sending image to HF Space for deblurring...")
 
         # Use handle_file() to properly wrap the file path for the Gradio API.
-        # Passing a raw path string causes a Pydantic validation error
-        # ("Input should be a valid dictionary or instance of ImageData").
         file_input = handle_file(tmp_path)
 
         try:
@@ -86,7 +75,6 @@ def run_hf_deblur(image: Image.Image) -> Image.Image:
                 api_name="/predict"
             )
         except Exception:
-            # fallback
             logger.warning("Trying fallback predict call...")
             result = client.predict(file_input)
 
@@ -105,6 +93,5 @@ def run_hf_deblur(image: Image.Image) -> Image.Image:
         raise
 
     finally:
-        # Clean up temp file
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)

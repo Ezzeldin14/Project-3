@@ -6,7 +6,7 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from PIL import Image
 from rest_framework import serializers as drf_serializers, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -16,7 +16,14 @@ logger = logging.getLogger(__name__)
 from user_history.models import User_History
 
 from .serializers import ImageProcessSerializer
-from .utils import process_image
+
+
+class DebugPingView(APIView):
+    """Temporary debug endpoint — returns JSON to verify deployment is live."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"status": "ok", "version": "deblur-fix-v3"})
 
 
 class ProcessImageView(APIView):
@@ -43,6 +50,8 @@ class ProcessImageView(APIView):
     )
     def post(self, request):
         try:
+            from .utils import process_image
+
             serializer = ImageProcessSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
