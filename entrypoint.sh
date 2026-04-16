@@ -16,4 +16,5 @@ python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 
 # Start Gunicorn using Railway PORT
-exec gunicorn API.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3
+# --timeout 300: HF Space may need up to 5 min to wake up + process images
+exec gunicorn API.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 300
