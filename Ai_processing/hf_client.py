@@ -102,6 +102,9 @@ def run_hf_super_resolution(image: Image.Image) -> Image.Image:
     """
     Send an image to the HF Space for super-resolution and return the result.
     Uses Real-ESRGAN model hosted on Hugging Face.
+
+    Input images larger than 500px on any side are downscaled first to avoid
+    OOM / timeout on the free-tier HF Space (cpu-basic).
     """
     from gradio_client import handle_file  # lazy import
 
@@ -109,35 +112,45 @@ def run_hf_super_resolution(image: Image.Image) -> Image.Image:
     if image.mode != "RGB":
         image = image.convert("RGB")
 
+    # Cap input size to avoid OOM on the HF Space (4× upscale is expensive)
+    MAX_SIDE = 500
+    w, h = image.size
+    if w > MAX_SIDE or h > MAX_SIDE:
+        ratio = min(MAX_SIDE / w, MAX_SIDE / h)
+        new_size = (int(w * ratio), int(h * ratio))
+        logger.info("Resizing SR input from %s to %s", image.size, new_size)
+        image = image.resize(new_size, Image.LANCZOS)
+
     # Save image to temporary file
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         image.save(tmp, format="PNG")
         tmp_path = tmp.name
 
     try:
+        logger.info("Connecting to HF Space for super-resolution...")
         client = _get_client(HF_SPACES["SUPER_RESOLUTION"])
 
-        logger.info("Sending image to HF Space for super-resolution...")
+        logger.info(
+            "Sending image (%dx%d) to HF Space for super-resolution...",
+            image.size[0], image.size[1],
+        )
 
         # Use handle_file() to properly wrap the file path for the Gradio API.
         file_input = handle_file(tmp_path)
 
-        try:
-            result = client.predict(
-                file_input,
-                api_name="/upscale"
-            )
-        except Exception:
-            logger.warning("Trying fallback predict call...")
-            result = client.predict(file_input)
+        result = client.predict(
+            file_input,
+            api_name="/upscale",
+        )
 
-        logger.info("Received response from HF Space (super-resolution)")
+        logger.info("Received response from HF Space (super-resolution): %s", result)
 
         # Some spaces return tuple/list
         if isinstance(result, (list, tuple)):
             result = result[0]
 
         processed_image = Image.open(result).convert("RGB")
+        logger.info("Super-resolution output size: %s", processed_image.size)
 
         return processed_image
 
