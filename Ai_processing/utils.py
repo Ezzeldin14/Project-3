@@ -3,8 +3,8 @@ Image processing utilities.
 
 Each function takes a PIL Image and returns a processed PIL Image.
 - DE_BLUR: Calls HuggingFace Space API (NAFNet model hosted remotely).
+- SUPER_RESOLUTION: Calls HuggingFace Space API (Real-ESRGAN model hosted remotely).
 - COLORIZATION: Placeholder — returns image unchanged (model not yet integrated).
-- SUPER_RESOLUTION: Placeholder — returns image unchanged (model not yet integrated).
 - BILATERAL_FILTER: OpenCV bilateral filter (edge-preserving smoothing).
 - GAUSSIAN_FILTER: OpenCV Gaussian blur.
 - GUIDED_FILTER: OpenCV guided filter (edge-aware smoothing).
@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from .hf_client import run_hf_deblur
+from .hf_client import run_hf_deblur, run_hf_super_resolution
 
 
 # ---------------------------------------------------------------------------
@@ -40,10 +40,10 @@ def _cv2_to_pil(img_bgr: np.ndarray) -> Image.Image:
 
 def apply_super_resolution(image: Image.Image) -> Image.Image:
     """
-    Placeholder for super-resolution AI model.
-    TODO: Replace with your actual super-resolution model call.
+    Upscale an image using Real-ESRGAN model hosted on HuggingFace Space.
+    Sends the image to HF, model runs remotely, returns enhanced image.
     """
-    return image
+    return run_hf_super_resolution(image)
 
 
 def apply_colorization(image: Image.Image) -> Image.Image:
