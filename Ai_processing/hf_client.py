@@ -125,7 +125,7 @@ def run_hf_super_resolution(image: Image.Image) -> Image.Image:
         try:
             result = client.predict(
                 file_input,
-                api_name="/predict"
+                api_name="/upscale"
             )
         except Exception:
             logger.warning("Trying fallback predict call...")
