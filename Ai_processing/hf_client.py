@@ -20,7 +20,7 @@ _clients: dict[str, object] = {}
 # Space URLs for each AI feature
 HF_SPACES = {
     "DE_BLUR": "EhabByte/finalfrfr",
-    "SUPER_RESOLUTION": "moamenfares/real-esrgan-api",
+    "SUPER_RESOLUTION": "Moamenfares/Real-ESRGAN-API",
 }
 
 
