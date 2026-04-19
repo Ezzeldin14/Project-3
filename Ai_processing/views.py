@@ -131,13 +131,13 @@ class SaveToHistoryView(APIView):
     """
     POST /api/processing/save/
 
-    Saves a processed image to the user's history.
+    Processes an image and saves both original and processed versions
+    to the user's history.
     Called by the Flutter app when the user clicks "Save".
 
-    Accepts JSON with:
-      - original_image: URL of the original image (from /process/ response)
-      - processed_image: URL of the processed image (from /process/ response)
-      - feature: the feature that was used
+    Accepts multipart/form-data with:
+      - image: the uploaded image file
+      - feature: one of SUPER_RESOLUTION, COLORIZATION, DE_BLUR, etc.
     """
     permission_classes = [IsAuthenticated]
 
@@ -150,30 +150,47 @@ class SaveToHistoryView(APIView):
     )
     def post(self, request):
         try:
+            from .utils import process_image
+
             serializer = SaveToHistorySerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            original_url = serializer.validated_data['original_image']
-            processed_url = serializer.validated_data['processed_image']
+            uploaded_image = serializer.validated_data['image']
             feature = serializer.validated_data['feature']
 
-            # Download images from URLs and save to history
-            import requests as http_requests
+            # Open the uploaded image with Pillow
+            try:
+                pil_image = Image.open(uploaded_image)
+            except Exception:
+                return Response(
+                    {"error": "Invalid image file. Could not open the image."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # Download original image
-            orig_response = http_requests.get(original_url, timeout=30)
-            orig_response.raise_for_status()
+            # Process the image
+            try:
+                processed_pil = process_image(pil_image, feature)
+            except ValueError as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Save the original uploaded image
+            unique_id = uuid.uuid4().hex[:12]
+            uploaded_image.seek(0)
             original_content = ContentFile(
-                orig_response.content,
-                name=f"original_{uuid.uuid4().hex[:12]}.png"
+                uploaded_image.read(),
+                name=f"original_{unique_id}.png"
             )
 
-            # Download processed image
-            proc_response = http_requests.get(processed_url, timeout=30)
-            proc_response.raise_for_status()
+            # Save the processed image
+            processed_buffer = BytesIO()
+            processed_pil.save(processed_buffer, format='PNG')
+            processed_buffer.seek(0)
             processed_content = ContentFile(
-                proc_response.content,
-                name=f"processed_{uuid.uuid4().hex[:12]}.png"
+                processed_buffer.read(),
+                name=f"processed_{unique_id}.png"
             )
 
             # Create history entry
