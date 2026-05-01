@@ -130,12 +130,12 @@ class SaveToHistoryView(APIView):
     """
     POST /api/processing/save/
 
-    Processes an image and saves both original and processed versions
-    to the user's history.
-    Called by the Flutter app when the user clicks "Save".
+    Saves already-processed images to the user's history.
+    Called by the Flutter app when the user clicks "Save" after previewing.
 
-    Accepts multipart/form-data with:
-      - image: the uploaded image file
+    Accepts JSON or form-data with:
+      - original_image: URL of the original image (from /process/ response)
+      - processed_image: URL of the processed image (from /process/ response)
       - feature: one of SUPER_RESOLUTION, COLORIZATION, DE_BLUR, etc.
     """
     permission_classes = [IsAuthenticated]
@@ -149,46 +149,44 @@ class SaveToHistoryView(APIView):
     )
     def post(self, request):
         try:
-            from .utils import process_image
+            from urllib.request import urlopen, Request
+            from urllib.error import URLError, HTTPError
 
             serializer = SaveToHistorySerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            uploaded_image = serializer.validated_data['image']
+            original_url = serializer.validated_data['original_image']
+            processed_url = serializer.validated_data['processed_image']
             feature = serializer.validated_data['feature']
 
-            # Open the uploaded image with Pillow
+            # Download the original image from the URL
             try:
-                pil_image = Image.open(uploaded_image)
-            except Exception:
+                orig_resp = urlopen(Request(original_url), timeout=30)
+                orig_data = orig_resp.read()
+            except (URLError, HTTPError) as e:
                 return Response(
-                    {"error": "Invalid image file. Could not open the image."},
+                    {"error": f"Could not download original image: {str(e)}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Process the image
+            # Download the processed image from the URL
             try:
-                processed_pil = process_image(pil_image, feature)
-            except ValueError as e:
+                proc_resp = urlopen(Request(processed_url), timeout=30)
+                proc_data = proc_resp.read()
+            except (URLError, HTTPError) as e:
                 return Response(
-                    {"error": str(e)},
+                    {"error": f"Could not download processed image: {str(e)}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Save the original uploaded image
             unique_id = uuid.uuid4().hex[:12]
-            uploaded_image.seek(0)
+
             original_content = ContentFile(
-                uploaded_image.read(),
+                orig_data,
                 name=f"original_{unique_id}.png"
             )
-
-            # Save the processed image
-            processed_buffer = BytesIO()
-            processed_pil.save(processed_buffer, format='PNG')
-            processed_buffer.seek(0)
             processed_content = ContentFile(
-                processed_buffer.read(),
+                proc_data,
                 name=f"processed_{unique_id}.png"
             )
 

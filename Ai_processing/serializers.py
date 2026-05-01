@@ -17,5 +17,6 @@ class ImageProcessSerializer(serializers.Serializer):
 
 
 class SaveToHistorySerializer(serializers.Serializer):
-    image = serializers.ImageField()
+    original_image = serializers.URLField()
+    processed_image = serializers.URLField()
     feature = serializers.ChoiceField(choices=FEATURE_CHOICES)
