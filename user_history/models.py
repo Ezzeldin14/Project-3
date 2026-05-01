@@ -1,22 +1,11 @@
-import os
-
 from django.db import models
 from users.models import User
-
-# Use RawMediaCloudinaryStorage to prevent Cloudinary from applying
-# automatic compression / format conversion that degrades image quality.
-if os.getenv("CLOUDINARY_URL"):
-    from cloudinary_storage.storage import RawMediaCloudinaryStorage
-    _media_storage = RawMediaCloudinaryStorage()
-else:
-    _media_storage = None  # use Django default (local filesystem)
-
 
 # Create your models here.
 class User_History(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='history')
-    image_uploaded = models.ImageField(upload_to='user_history/', storage=_media_storage)
-    restored_image = models.ImageField(upload_to='user_history/restored/', storage=_media_storage)
+    image_uploaded = models.ImageField(upload_to='user_history/')
+    restored_image = models.ImageField(upload_to='user_history/restored/')
     feature_used = models.CharField(
         max_length=50,
         choices=[
