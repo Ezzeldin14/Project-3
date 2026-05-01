@@ -17,7 +17,8 @@ class User_History(models.Model):
             ('GUIDED_FILTER', 'Guided Filter'),
             ('MEDIAN_FILTER', 'Median Filter'),
         ],
-        default='DE_BLUR',
+        blank=True,
+        null=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     

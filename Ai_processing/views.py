@@ -130,12 +130,11 @@ class SaveToHistoryView(APIView):
     """
     POST /api/processing/save/
 
-    Saves already-processed images to the user's history.
+    Saves an image to the user's history.
     Called by the Flutter app when the user clicks "Save" after previewing.
 
-    Accepts JSON or form-data with:
-      - processed_image: URL of the processed image (from /process/ response)
-      - feature: one of SUPER_RESOLUTION, COLORIZATION, DE_BLUR, etc.
+    Accepts multipart/form-data with:
+      - image: the image file to save
     """
     permission_classes = [IsAuthenticated]
 
@@ -148,36 +147,15 @@ class SaveToHistoryView(APIView):
     )
     def post(self, request):
         try:
-            from urllib.request import urlopen, Request
-            from urllib.error import URLError, HTTPError
-
             serializer = SaveToHistorySerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            processed_url = serializer.validated_data['processed_image']
-            feature = serializer.validated_data['feature']
+            image = serializer.validated_data['image']
 
-            # Download the processed image from the URL
-            try:
-                proc_resp = urlopen(Request(processed_url), timeout=30)
-                proc_data = proc_resp.read()
-            except (URLError, HTTPError) as e:
-                return Response(
-                    {"error": f"Could not download processed image: {str(e)}"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            unique_id = uuid.uuid4().hex[:12]
-            processed_content = ContentFile(
-                proc_data,
-                name=f"processed_{unique_id}.png"
-            )
-
-            # Create history entry
+            # Create history entry with the uploaded image
             history = User_History.objects.create(
                 user=request.user,
-                restored_image=processed_content,
-                feature_used=feature,
+                restored_image=image,
             )
 
             return Response({
@@ -192,3 +170,4 @@ class SaveToHistoryView(APIView):
                 {"error": f"Save failed: {str(e)}", "traceback": tb},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
