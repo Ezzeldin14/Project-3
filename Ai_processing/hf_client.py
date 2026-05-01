@@ -21,6 +21,7 @@ _clients: dict[str, object] = {}
 HF_SPACES = {
     "DE_BLUR": "EhabByte/finalfrfr",
     "SUPER_RESOLUTION": "Moamenfares/Real-ESRGAN-API",
+    "COLORIZATION": "Aboda7m88/Colorize-api",
 }
 
 
@@ -156,6 +157,63 @@ def run_hf_super_resolution(image: Image.Image) -> Image.Image:
 
     except Exception as e:
         logger.exception("HF Super Resolution failed: %s", str(e))
+        raise
+
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def run_hf_colorize(image: Image.Image) -> Image.Image:
+    """
+    Send an image to the HF Space for colorization and return the result.
+    Uses a DeOldify-style model hosted on Hugging Face.
+    """
+    from gradio_client import handle_file  # lazy import
+
+    # Ensure RGB
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
+    # Save image to temporary file
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        image.save(tmp, format="PNG")
+        tmp_path = tmp.name
+
+    try:
+        logger.info("Connecting to HF Space for colorization...")
+        client = _get_client(HF_SPACES["COLORIZATION"])
+
+        logger.info(
+            "Sending image (%dx%d) to HF Space for colorization...",
+            image.size[0], image.size[1],
+        )
+
+        # Use handle_file() to properly wrap the file path for the Gradio API.
+        file_input = handle_file(tmp_path)
+
+        try:
+            result = client.predict(
+                file_input,
+                api_name="/predict"
+            )
+        except Exception:
+            logger.warning("Trying fallback predict call...")
+            result = client.predict(file_input)
+
+        logger.info("Received response from HF Space (colorization): %s", result)
+
+        # Some spaces return tuple/list
+        if isinstance(result, (list, tuple)):
+            result = result[0]
+
+        processed_image = Image.open(result).convert("RGB")
+        logger.info("Colorization output size: %s", processed_image.size)
+
+        return processed_image
+
+    except Exception as e:
+        logger.exception("HF Colorization failed: %s", str(e))
         raise
 
     finally:

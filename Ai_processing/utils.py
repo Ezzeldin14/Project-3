@@ -4,7 +4,7 @@ Image processing utilities.
 Each function takes a PIL Image and returns a processed PIL Image.
 - DE_BLUR: Calls HuggingFace Space API (NAFNet model hosted remotely).
 - SUPER_RESOLUTION: Calls HuggingFace Space API (Real-ESRGAN model hosted remotely).
-- COLORIZATION: Placeholder — returns image unchanged (model not yet integrated).
+- COLORIZATION: Calls HuggingFace Space API (DeOldify-style model hosted remotely).
 - BILATERAL_FILTER: OpenCV bilateral filter (edge-preserving smoothing).
 - GAUSSIAN_FILTER: OpenCV Gaussian blur.
 - GUIDED_FILTER: OpenCV guided filter (edge-aware smoothing).
@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from .hf_client import run_hf_deblur, run_hf_super_resolution
+from .hf_client import run_hf_colorize, run_hf_deblur, run_hf_super_resolution
 
 
 # ---------------------------------------------------------------------------
@@ -48,10 +48,10 @@ def apply_super_resolution(image: Image.Image) -> Image.Image:
 
 def apply_colorization(image: Image.Image) -> Image.Image:
     """
-    Placeholder for colorization AI model.
-    TODO: Replace with your actual colorization model call.
+    Colorize a grayscale image using a DeOldify-style model hosted on HuggingFace Space.
+    Sends the image to HF, model runs remotely, returns colorized image.
     """
-    return image
+    return run_hf_colorize(image)
 
 
 def apply_deblur(image: Image.Image) -> Image.Image:
