@@ -15,7 +15,7 @@ else:
 # Create your models here.
 class User_History(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='history')
-    image_uploaded = models.ImageField(upload_to='user_history/', storage=_media_storage)
+    image_uploaded = models.ImageField(upload_to='user_history/', storage=_media_storage, blank=True, null=True)
     restored_image = models.ImageField(upload_to='user_history/restored/', storage=_media_storage)
     feature_used = models.CharField(
         max_length=50,

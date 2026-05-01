@@ -134,7 +134,6 @@ class SaveToHistoryView(APIView):
     Called by the Flutter app when the user clicks "Save" after previewing.
 
     Accepts JSON or form-data with:
-      - original_image: URL of the original image (from /process/ response)
       - processed_image: URL of the processed image (from /process/ response)
       - feature: one of SUPER_RESOLUTION, COLORIZATION, DE_BLUR, etc.
     """
@@ -155,19 +154,8 @@ class SaveToHistoryView(APIView):
             serializer = SaveToHistorySerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            original_url = serializer.validated_data['original_image']
             processed_url = serializer.validated_data['processed_image']
             feature = serializer.validated_data['feature']
-
-            # Download the original image from the URL
-            try:
-                orig_resp = urlopen(Request(original_url), timeout=30)
-                orig_data = orig_resp.read()
-            except (URLError, HTTPError) as e:
-                return Response(
-                    {"error": f"Could not download original image: {str(e)}"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
 
             # Download the processed image from the URL
             try:
@@ -180,11 +168,6 @@ class SaveToHistoryView(APIView):
                 )
 
             unique_id = uuid.uuid4().hex[:12]
-
-            original_content = ContentFile(
-                orig_data,
-                name=f"original_{unique_id}.png"
-            )
             processed_content = ContentFile(
                 proc_data,
                 name=f"processed_{unique_id}.png"
@@ -193,7 +176,6 @@ class SaveToHistoryView(APIView):
             # Create history entry
             history = User_History.objects.create(
                 user=request.user,
-                image_uploaded=original_content,
                 restored_image=processed_content,
                 feature_used=feature,
             )
