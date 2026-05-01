@@ -92,18 +92,24 @@ class ProcessImageView(APIView):
             processed_content = ContentFile(processed_buffer.read(), name=processed_name)
 
             # Upload images to storage (Cloudinary) without creating history
-            # We use a temporary model instance just to get the URLs
-            from django.core.files.storage import default_storage
+            # Use RawMediaCloudinaryStorage to prevent quality degradation
+            import os as _os
+            if _os.getenv("CLOUDINARY_URL"):
+                from cloudinary_storage.storage import RawMediaCloudinaryStorage
+                storage = RawMediaCloudinaryStorage()
+            else:
+                from django.core.files.storage import default_storage
+                storage = default_storage
 
-            original_path = default_storage.save(
+            original_path = storage.save(
                 f"user_history/{original_name}", original_content
             )
-            processed_path = default_storage.save(
+            processed_path = storage.save(
                 f"user_history/restored/{processed_name}", processed_content
             )
 
-            original_url = default_storage.url(original_path)
-            processed_url = default_storage.url(processed_path)
+            original_url = storage.url(original_path)
+            processed_url = storage.url(processed_path)
 
             # Make URLs absolute if they're relative
             if not original_url.startswith('http'):
