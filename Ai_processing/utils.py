@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from .hf_client import run_hf_colorize, run_hf_deblur, run_hf_super_resolution
+from .hf_client import run_hf_colorize, run_hf_deblur, run_hf_denoise, run_hf_super_resolution
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +60,14 @@ def apply_deblur(image: Image.Image) -> Image.Image:
     Sends the image to HF, model runs remotely, returns processed image.
     """
     return run_hf_deblur(image)
+
+
+def apply_denoise(image: Image.Image) -> Image.Image:
+    """
+    Denoise an image using NAFNet model hosted on HuggingFace Space.
+    Sends the image to HF, model runs remotely, returns processed image.
+    """
+    return run_hf_denoise(image)
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +133,7 @@ PROCESSING_FUNCTIONS = {
     'SUPER_RESOLUTION': apply_super_resolution,
     'COLORIZATION': apply_colorization,
     'DE_BLUR': apply_deblur,
+    'DE_NOISE': apply_denoise,
     'BILATERAL_FILTER': apply_bilateral_filter,
     'GAUSSIAN_FILTER': apply_gaussian_filter,
     'GUIDED_FILTER': apply_guided_filter,

@@ -20,6 +20,7 @@ _clients: dict[str, object] = {}
 # Space URLs for each AI feature
 HF_SPACES = {
     "DE_BLUR": "EhabByte/finalfrfr",
+    "DE_NOISE": "EhabByte/finalfrfr",  # same Space, different endpoint
     "SUPER_RESOLUTION": "Moamenfares/Real-ESRGAN-API",
     "COLORIZATION": "Aboda7m88/Colorize-api",
 }
@@ -71,14 +72,10 @@ def run_hf_deblur(image: Image.Image) -> Image.Image:
         # Use handle_file() to properly wrap the file path for the Gradio API.
         file_input = handle_file(tmp_path)
 
-        try:
-            result = client.predict(
-                file_input,
-                api_name="/predict"
-            )
-        except Exception:
-            logger.warning("Trying fallback predict call...")
-            result = client.predict(file_input)
+        result = client.predict(
+            file_input,
+            api_name="/deblur"
+        )
 
         logger.info("Received response from HF Space")
 
@@ -92,6 +89,53 @@ def run_hf_deblur(image: Image.Image) -> Image.Image:
 
     except Exception as e:
         logger.exception("HF Deblur failed: %s", str(e))
+        raise
+
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def run_hf_denoise(image: Image.Image) -> Image.Image:
+    """
+    Send an image to the HF Space for denoising and return the result.
+    Uses NAFNet model hosted on the same Space as deblur (EhabByte/finalfrfr).
+    """
+    from gradio_client import handle_file  # lazy import
+
+    # Ensure RGB
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
+    # Save image to temporary file
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        image.save(tmp, format="PNG")
+        tmp_path = tmp.name
+
+    try:
+        client = _get_client(HF_SPACES["DE_NOISE"])
+
+        logger.info("Sending image to HF Space for denoising...")
+
+        file_input = handle_file(tmp_path)
+
+        result = client.predict(
+            file_input,
+            api_name="/denoise"
+        )
+
+        logger.info("Received response from HF Space (denoise)")
+
+        # Some spaces return tuple/list
+        if isinstance(result, (list, tuple)):
+            result = result[0]
+
+        processed_image = Image.open(result).convert("RGB")
+
+        return processed_image
+
+    except Exception as e:
+        logger.exception("HF Denoise failed: %s", str(e))
         raise
 
     finally:

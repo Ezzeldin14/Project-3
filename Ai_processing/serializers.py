@@ -4,6 +4,7 @@ FEATURE_CHOICES = [
     ('SUPER_RESOLUTION', 'Super Resolution'),
     ('COLORIZATION', 'Colorization'),
     ('DE_BLUR', 'Deblur'),
+    ('DE_NOISE', 'Denoise'),
     ('BILATERAL_FILTER', 'Bilateral Filter'),
     ('GAUSSIAN_FILTER', 'Gaussian Filter'),
     ('GUIDED_FILTER', 'Guided Filter'),
