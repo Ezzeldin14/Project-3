@@ -5,6 +5,28 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def remove_duplicate_subscriptions(apps, schema_editor):
+    """
+    Before converting ForeignKey → OneToOneField, remove duplicate
+    subscriptions so each user has at most one row.
+    Keeps the most recent subscription per user.
+    """
+    Subscription = apps.get_model('subscriptions', 'Subscription')
+    from django.db.models import Max
+
+    # Find users with more than one subscription
+    dupes = (
+        Subscription.objects.values('user_id')
+        .annotate(max_id=Max('id'), cnt=models.Count('id'))
+        .filter(cnt__gt=1)
+    )
+    for entry in dupes:
+        # Keep the row with the highest id, delete the rest
+        Subscription.objects.filter(
+            user_id=entry['user_id']
+        ).exclude(id=entry['max_id']).delete()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,6 +35,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # ── 0. Remove duplicate subscriptions before OneToOne conversion ──
+        migrations.RunPython(
+            remove_duplicate_subscriptions,
+            migrations.RunPython.noop,
+        ),
+
         # ── 1. Drop old columns that no longer exist ──
         migrations.RemoveField(
             model_name='subscription',
