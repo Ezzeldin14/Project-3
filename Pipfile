@@ -21,6 +21,7 @@ onnxruntime = "*"
 opencv-contrib-python-headless = "*"
 numpy = "*"
 gradio-client = ">=0.16.0"
+stripe = "*"
 
 [dev-packages]
 

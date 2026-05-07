@@ -14,6 +14,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 logger = logging.getLogger(__name__)
 
 from user_history.models import User_History
+from subscriptions.models import Subscription
 
 from .serializers import ImageProcessSerializer, SaveToHistorySerializer
 
@@ -36,6 +37,10 @@ class ProcessImageView(APIView):
 
     Processes the image and returns URLs for both original and processed images.
     Does NOT save to history — use /api/processing/save/ for that.
+
+    Rate-limited AI features (COLORIZATION, DE_NOISE, DE_BLUR, SUPER_RESOLUTION)
+    consume quota on the FREE plan (2 uses per 2-day window).
+    PRO users have unlimited access.
     """
     permission_classes = [IsAuthenticated]
 
@@ -58,6 +63,28 @@ class ProcessImageView(APIView):
             uploaded_image = serializer.validated_data['image']
             feature = serializer.validated_data['feature']
 
+            # ----------------------------------------------------------
+            # Quota check for rate-limited AI features
+            # ----------------------------------------------------------
+            subscription, _ = Subscription.objects.get_or_create(
+                user=request.user,
+                defaults={'plan': 'FREE'},
+            )
+
+            if not subscription.can_use_feature(feature):
+                next_renewal = subscription.get_next_renewal()
+                renewal_str = next_renewal.isoformat() if next_renewal else 'unknown'
+                return Response(
+                    {
+                        "error": "Free plan quota exceeded. You have used all 2 AI processing slots in this 2-day window.",
+                        "plan": subscription.plan,
+                        "remaining_uses": 0,
+                        "next_renewal": renewal_str,
+                        "upgrade_hint": "Upgrade to PRO for unlimited access via POST /api/payments/create-checkout-session/",
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+
             # Open the uploaded image with Pillow
             try:
                 pil_image = Image.open(uploaded_image)
@@ -75,6 +102,12 @@ class ProcessImageView(APIView):
                     {"error": str(e)},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
+            # ----------------------------------------------------------
+            # Record usage AFTER successful processing
+            # ----------------------------------------------------------
+            if feature in Subscription.RATE_LIMITED_FEATURES:
+                subscription.record_usage(feature)
 
             # --- Save the original uploaded image as a Django file ---
             unique_id = uuid.uuid4().hex[:12]
@@ -115,6 +148,8 @@ class ProcessImageView(APIView):
                 "feature_used": feature,
                 "original_image": original_url,
                 "processed_image": processed_url,
+                "remaining_uses": subscription.get_remaining_uses(),
+                "plan": subscription.plan,
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -170,4 +205,3 @@ class SaveToHistoryView(APIView):
                 {"error": f"Save failed: {str(e)}", "traceback": tb},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
