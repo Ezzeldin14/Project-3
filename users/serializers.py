@@ -22,11 +22,25 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 class UserSerializer(serializers.ModelSerializer):
+    plan = serializers.SerializerMethodField()
+    remaining_uses = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 
-                'profile_picture', 'date_joined', 'is_verified')
-        read_only_fields = ('id', 'date_joined', 'is_verified')
+        fields = ('id', 'email', 'username',
+                'profile_picture', 'date_joined', 'is_verified',
+                'plan', 'remaining_uses')
+        read_only_fields = ('id', 'date_joined', 'is_verified', 'plan', 'remaining_uses')
+
+    def get_plan(self, obj):
+        from subscriptions.models import Subscription
+        sub, _ = Subscription.objects.get_or_create(user=obj, defaults={'plan': 'FREE'})
+        return sub.plan
+
+    def get_remaining_uses(self, obj):
+        from subscriptions.models import Subscription
+        sub, _ = Subscription.objects.get_or_create(user=obj, defaults={'plan': 'FREE'})
+        return sub.get_remaining_uses()
 
 
 class VerifyEmailOTPSerializer(serializers.Serializer):
