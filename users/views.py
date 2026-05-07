@@ -73,19 +73,28 @@ class LoginView(generics.GenericAPIView):
     permission_classes = (AllowAny,)
     
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        
-        refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        }, status=status.HTTP_200_OK)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.validated_data['user']
+            
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                }
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.exception("LOGIN ERROR: %s\n%s", str(e), traceback.format_exc())
+            return Response(
+                {"error": f"Login failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 
