@@ -129,6 +129,7 @@ class StripeWebhookView(APIView):
     permission_classes = [AllowAny]      # Stripe can't send JWTs
     authentication_classes = []          # skip auth entirely
 
+    @extend_schema(request=None, responses={200: inline_serializer('WebhookResponse', fields={'status': drf_serializers.CharField()})})
     def post(self, request):
         payload = request.body
         sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
@@ -197,6 +198,7 @@ class PaymentSuccessView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(responses={200: inline_serializer('PaymentSuccessResponse', fields={'message': drf_serializers.CharField(), 'session_id': drf_serializers.CharField()})})
     def get(self, request):
         session_id = request.query_params.get('session_id', '')
         return Response({
@@ -213,6 +215,7 @@ class PaymentCancelView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(responses={200: inline_serializer('PaymentCancelResponse', fields={'message': drf_serializers.CharField()})})
     def get(self, request):
         return Response({
             'message': 'Payment was cancelled. You can try again anytime.',

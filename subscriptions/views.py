@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from .models import Subscription
 from .serializers import SubscriptionSerializer, UsageRecordSerializer
@@ -16,6 +17,7 @@ class SubscriptionStatusView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: SubscriptionSerializer})
     def get(self, request):
         subscription, _ = Subscription.objects.get_or_create(
             user=request.user,
@@ -33,6 +35,7 @@ class UsageHistoryView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: UsageRecordSerializer(many=True)})
     def get(self, request):
         records = request.user.usage_records.all()[:20]
         serializer = UsageRecordSerializer(records, many=True)

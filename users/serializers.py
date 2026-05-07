@@ -32,12 +32,12 @@ class UserSerializer(serializers.ModelSerializer):
                 'plan', 'remaining_uses')
         read_only_fields = ('id', 'date_joined', 'is_verified', 'plan', 'remaining_uses')
 
-    def get_plan(self, obj):
+    def get_plan(self, obj) -> str:
         from subscriptions.models import Subscription
         sub, _ = Subscription.objects.get_or_create(user=obj, defaults={'plan': 'FREE'})
         return sub.plan
 
-    def get_remaining_uses(self, obj):
+    def get_remaining_uses(self, obj) -> int:
         from subscriptions.models import Subscription
         sub, _ = Subscription.objects.get_or_create(user=obj, defaults={'plan': 'FREE'})
         return sub.get_remaining_uses()
