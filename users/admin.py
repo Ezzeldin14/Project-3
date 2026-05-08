@@ -1,12 +1,93 @@
 from django.contrib import admin
-from .models import User
-from .models import EmailVerificationOTP
-from .models import PasswordResetOTP
+from django.utils.html import format_html
+from .models import User, EmailVerificationOTP, PasswordResetOTP
+
+
 admin.site.site_header = "PixRevive Admin Portal"
 admin.site.site_title = "My Project PixRevive Admin Portal"
 admin.site.index_title = "Welcome to PixRevive Admin Portal"
 
 
-admin.site.register(User)
+class SubscriptionInline(admin.StackedInline):
+    """Show the subscription plan inline on the User detail page."""
+    model = None  # set dynamically in __init__
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = ('plan',)
+    verbose_name = 'Subscription Plan'
+    verbose_name_plural = 'Subscription Plan'
+
+    def __init__(self, parent_model, admin_site):
+        from subscriptions.models import Subscription
+        self.model = Subscription
+        super().__init__(parent_model, admin_site)
+
+
+@admin.action(description="⬆️ Upgrade selected users to PRO")
+def upgrade_users_to_pro(modeladmin, request, queryset):
+    from subscriptions.models import Subscription
+    count = 0
+    for user in queryset:
+        sub, _ = Subscription.objects.get_or_create(
+            user=user, defaults={'plan': 'FREE'}
+        )
+        if sub.plan != 'PRO':
+            sub.plan = 'PRO'
+            sub.save()
+            count += 1
+    modeladmin.message_user(request, f"✅ {count} user(s) upgraded to PRO.")
+
+
+@admin.action(description="⬇️ Downgrade selected users to FREE")
+def downgrade_users_to_free(modeladmin, request, queryset):
+    from subscriptions.models import Subscription
+    count = 0
+    for user in queryset:
+        sub, _ = Subscription.objects.get_or_create(
+            user=user, defaults={'plan': 'FREE'}
+        )
+        if sub.plan != 'FREE':
+            sub.plan = 'FREE'
+            sub.save()
+            count += 1
+    modeladmin.message_user(request, f"✅ {count} user(s) downgraded to FREE.")
+
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = (
+        'email',
+        'username',
+        'plan_badge',
+        'is_verified',
+        'date_joined',
+    )
+    list_filter = ('is_verified',)
+    search_fields = ('email', 'username')
+    readonly_fields = ('id', 'date_joined')
+    inlines = [SubscriptionInline]
+    actions = [upgrade_users_to_pro, downgrade_users_to_free]
+
+    @admin.display(description='Plan')
+    def plan_badge(self, obj):
+        try:
+            from subscriptions.models import Subscription
+            sub = Subscription.objects.filter(user=obj).first()
+            plan = sub.plan if sub else 'FREE'
+        except Exception:
+            plan = 'FREE'
+
+        if plan == 'PRO':
+            return format_html(
+                '<span style="background:#10b981;color:#fff;padding:3px 10px;'
+                'border-radius:12px;font-weight:bold;font-size:11px;">PRO</span>'
+            )
+        return format_html(
+            '<span style="background:#6b7280;color:#fff;padding:3px 10px;'
+            'border-radius:12px;font-weight:bold;font-size:11px;">FREE</span>'
+        )
+
+
 admin.site.register(EmailVerificationOTP)
 admin.site.register(PasswordResetOTP)
