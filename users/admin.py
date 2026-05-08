@@ -22,7 +22,6 @@ class SubscriptionInline(admin.StackedInline):
 
 @admin.action(description="⬆️ Upgrade selected users to PRO")
 def upgrade_users_to_pro(modeladmin, request, queryset):
-    from subscriptions.models import Subscription
     count = 0
     for user in queryset:
         sub, _ = Subscription.objects.get_or_create(
@@ -37,7 +36,6 @@ def upgrade_users_to_pro(modeladmin, request, queryset):
 
 @admin.action(description="⬇️ Downgrade selected users to FREE")
 def downgrade_users_to_free(modeladmin, request, queryset):
-    from subscriptions.models import Subscription
     count = 0
     for user in queryset:
         sub, _ = Subscription.objects.get_or_create(
@@ -55,20 +53,16 @@ class UserAdmin(admin.ModelAdmin):
     list_display = (
         'email',
         'username',
-        'plan_badge',
+        'get_plan',
         'is_verified',
-        'date_joined',
     )
     list_filter = ('is_verified',)
     search_fields = ('email', 'username')
-    readonly_fields = ('id', 'date_joined')
     inlines = [SubscriptionInline]
     actions = [upgrade_users_to_pro, downgrade_users_to_free]
 
-    @admin.display(description='Plan')
-    def plan_badge(self, obj):
+    def get_plan(self, obj):
         try:
-            from subscriptions.models import Subscription
             sub = Subscription.objects.filter(user=obj).first()
             plan = sub.plan if sub else 'FREE'
         except Exception:
@@ -83,6 +77,7 @@ class UserAdmin(admin.ModelAdmin):
             '<span style="background:#6b7280;color:#fff;padding:3px 10px;'
             'border-radius:12px;font-weight:bold;font-size:11px;">FREE</span>'
         )
+    get_plan.short_description = 'Plan'
 
 
 admin.site.register(EmailVerificationOTP)
