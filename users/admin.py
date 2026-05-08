@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import User, EmailVerificationOTP, PasswordResetOTP
+from subscriptions.models import Subscription
 
 
 admin.site.site_header = "PixRevive Admin Portal"
@@ -10,18 +11,13 @@ admin.site.index_title = "Welcome to PixRevive Admin Portal"
 
 class SubscriptionInline(admin.StackedInline):
     """Show the subscription plan inline on the User detail page."""
-    model = None  # set dynamically in __init__
+    model = Subscription
     extra = 0
     max_num = 1
     can_delete = False
     fields = ('plan',)
     verbose_name = 'Subscription Plan'
     verbose_name_plural = 'Subscription Plan'
-
-    def __init__(self, parent_model, admin_site):
-        from subscriptions.models import Subscription
-        self.model = Subscription
-        super().__init__(parent_model, admin_site)
 
 
 @admin.action(description="⬆️ Upgrade selected users to PRO")
