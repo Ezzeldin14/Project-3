@@ -220,16 +220,23 @@ class PaymobWebhookView(APIView):
             logger.info('Paymob webhook: payment not successful, ignoring.')
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
-        # ---- Identify the user by email ----
+        # ---- Identify the user ----
         billing_data = txn.get('billing_data', {}) or {}
-        user_email = billing_data.get('email', '')
+        logger.info('Paymob webhook: billing_data=%s', billing_data)
+        logger.info('Paymob webhook: merchant_order_id=%s', txn.get('merchant_order_id'))
 
-        logger.info('Paymob webhook: billing_data.email=%s', user_email)
+        # Try email from billing_data first, then merchant_order_id as fallback
+        user_email = (
+            billing_data.get('email', '')
+            or txn.get('merchant_order_id', '')
+        )
+
+        logger.info('Paymob webhook: resolved user_email=%s', user_email)
 
         if not user_email:
-            logger.error('Paymob webhook: no email in billing_data, txn id=%s', txn.get('id'))
+            logger.error('Paymob webhook: cannot identify user, txn id=%s', txn.get('id'))
             return Response(
-                {'error': 'Cannot identify user — no email in billing_data.'},
+                {'error': 'Cannot identify user — no email in billing_data or merchant_order_id.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
