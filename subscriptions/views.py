@@ -221,25 +221,33 @@ class PaymobWebhookView(APIView):
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
         # ---- Identify the user ----
-        # Log full txn to find where Paymob puts the email
-        logger.info('Paymob webhook: FULL TXN DATA=%s', json.dumps(txn, default=str)[:3000])
+        # Paymob puts billing_data inside order.billing_data (NOT txn.billing_data)
+        order_data = txn.get('order', {}) or {}
+        billing_data = order_data.get('billing_data', {}) or {}
 
-        billing_data = txn.get('billing_data', {}) or {}
+        # Fallback: also check txn-level billing_data
+        if not billing_data:
+            billing_data = txn.get('billing_data', {}) or {}
+
         logger.info('Paymob webhook: billing_data=%s', billing_data)
-        logger.info('Paymob webhook: merchant_order_id=%s', txn.get('merchant_order_id'))
 
-        # Try email from billing_data first, then merchant_order_id as fallback
+        # Try email from billing_data, then merchant_order_id as fallback
         user_email = (
             billing_data.get('email', '')
+            or order_data.get('merchant_order_id', '')
             or txn.get('merchant_order_id', '')
         )
+
+        # Filter out Paymob's default "NA" value
+        if user_email == 'NA':
+            user_email = ''
 
         logger.info('Paymob webhook: resolved user_email=%s', user_email)
 
         if not user_email:
             logger.error('Paymob webhook: cannot identify user, txn id=%s', txn.get('id'))
             return Response(
-                {'error': 'Cannot identify user — no email in billing_data or merchant_order_id.'},
+                {'error': 'Cannot identify user — no email in billing_data.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
