@@ -221,6 +221,9 @@ class PaymobWebhookView(APIView):
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
         # ---- Identify the user ----
+        # Log full txn to find where Paymob puts the email
+        logger.info('Paymob webhook: FULL TXN DATA=%s', json.dumps(txn, default=str)[:3000])
+
         billing_data = txn.get('billing_data', {}) or {}
         logger.info('Paymob webhook: billing_data=%s', billing_data)
         logger.info('Paymob webhook: merchant_order_id=%s', txn.get('merchant_order_id'))
