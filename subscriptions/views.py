@@ -140,8 +140,17 @@ class PaymobWebhookView(APIView):
 
     @extend_schema(
         request=inline_serializer('PaymobWebhookRequest', fields={
-            'obj': drf_serializers.DictField(),
-            'hmac': drf_serializers.CharField(),
+            'obj': inline_serializer('PaymobTransaction', fields={
+                'success': drf_serializers.BooleanField(),
+                'amount_cents': drf_serializers.IntegerField(),
+                'order': inline_serializer('PaymobOrder', fields={
+                    'id': drf_serializers.CharField(),
+                }),
+                'billing_data': inline_serializer('PaymobBillingData', fields={
+                    'email': drf_serializers.EmailField(help_text='The user email registered in the app'),
+                }),
+            }),
+            'hmac': drf_serializers.CharField(help_text='Security signature from Paymob'),
         }),
         responses={
             200: inline_serializer('PaymobWebhookResponse', fields={
