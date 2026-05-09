@@ -180,13 +180,25 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        txn = payload.get('obj', {})
-        received_hmac = payload.get('hmac', '')
+        logger.info('Paymob webhook: payload keys=%s', list(payload.keys()))
+        logger.info('Paymob webhook: query params=%s', dict(request.query_params))
+
+        # HMAC can be in query params (?hmac=xxx) or in the JSON body
+        received_hmac = (
+            request.query_params.get('hmac', '')
+            or payload.get('hmac', '')
+        )
+
+        # Transaction data can be under "obj" key or directly in the body
+        txn = payload.get('obj', None)
+        if txn is None:
+            txn = payload
 
         if not txn or not received_hmac:
-            logger.error('Paymob webhook: missing "obj" or "hmac".')
+            logger.error('Paymob webhook: missing txn data or hmac. hmac=%s, txn_keys=%s',
+                         bool(received_hmac), list(txn.keys()) if isinstance(txn, dict) else 'not a dict')
             return Response(
-                {'error': 'Missing "obj" or "hmac" in request body.'},
+                {'error': 'Missing transaction data or "hmac".'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
