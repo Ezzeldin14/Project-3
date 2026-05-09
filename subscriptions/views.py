@@ -169,7 +169,7 @@ class PaymobWebhookView(APIView):
     )
     def post(self, request):
         # Log the FULL raw request body to see exactly what Paymob sends
-        logger.info('Paymob webhook received. RAW BODY=%s', request.body.decode('utf-8', errors='replace')[:5000])
+        logger.error('Paymob webhook received. RAW BODY=%s', request.body.decode('utf-8', errors='replace')[:5000])
 
         # Parse raw body
         try:
@@ -181,8 +181,8 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logger.info('Paymob webhook: payload keys=%s', list(payload.keys()))
-        logger.info('Paymob webhook: query params=%s', dict(request.query_params))
+        logger.error('Paymob webhook: payload keys=%s', list(payload.keys()))
+        logger.error('Paymob webhook: query params=%s', dict(request.query_params))
 
         # HMAC can be in query params (?hmac=xxx) or in the JSON body
         received_hmac = (
@@ -211,14 +211,14 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        logger.info('Paymob webhook: HMAC verified OK.')
+        logger.error('Paymob webhook: HMAC verified OK.')
 
         # ---- Check payment success ----
         success = txn.get('success', False)
-        logger.info('Paymob webhook: success=%s (type=%s), txn id=%s', success, type(success).__name__, txn.get('id'))
+        logger.error('Paymob webhook: success=%s (type=%s), txn id=%s', success, type(success).__name__, txn.get('id'))
 
         if not success:
-            logger.info('Paymob webhook: payment not successful, ignoring.')
+            logger.error('Paymob webhook: payment not successful, ignoring.')
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
         # ---- Identify the user ----
@@ -230,7 +230,7 @@ class PaymobWebhookView(APIView):
         if not billing_data:
             billing_data = txn.get('billing_data', {}) or {}
 
-        logger.info('Paymob webhook: billing_data=%s', billing_data)
+        logger.error('Paymob webhook: billing_data=%s', billing_data)
 
         # Try email from billing_data, then merchant_order_id as fallback
         user_email = (
@@ -243,7 +243,7 @@ class PaymobWebhookView(APIView):
         if user_email == 'NA':
             user_email = ''
 
-        logger.info('Paymob webhook: resolved user_email=%s', user_email)
+        logger.error('Paymob webhook: resolved user_email=%s', user_email)
 
         if not user_email:
             logger.error('Paymob webhook: cannot identify user, txn id=%s', txn.get('id'))
