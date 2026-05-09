@@ -96,6 +96,15 @@ def _resolve(data: dict, dotted_key: str):
     return value
 
 
+def _to_str(value) -> str:
+    """Convert a value to string matching Paymob's format.
+    Booleans must be lowercase 'true'/'false' (not Python's 'True'/'False').
+    """
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    return str(value)
+
+
 def _verify_hmac(txn_data: dict, received_hmac: str) -> bool:
     """
     Build the concatenated string from the transaction object,
@@ -106,7 +115,7 @@ def _verify_hmac(txn_data: dict, received_hmac: str) -> bool:
         logger.error('PAYMOB_HMAC_SECRET is not configured.')
         return False
 
-    concatenated = ''.join(str(_resolve(txn_data, field)) for field in HMAC_FIELDS)
+    concatenated = ''.join(_to_str(_resolve(txn_data, field)) for field in HMAC_FIELDS)
 
     computed = hmac.new(
         key=secret.encode('utf-8'),
