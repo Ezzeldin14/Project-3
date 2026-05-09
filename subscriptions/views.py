@@ -168,7 +168,8 @@ class PaymobWebhookView(APIView):
         },
     )
     def post(self, request):
-        logger.info('Paymob webhook received.')
+        # Log the FULL raw request body to see exactly what Paymob sends
+        logger.info('Paymob webhook received. RAW BODY=%s', request.body.decode('utf-8', errors='replace')[:5000])
 
         # Parse raw body
         try:

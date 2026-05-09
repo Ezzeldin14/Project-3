@@ -28,7 +28,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_usage_in_cycle(self, obj: Subscription) -> int:
         return obj.get_usage_in_current_cycle()
 
-    def get_next_renewal(self, obj: Subscription):
+    def get_next_renewal(self, obj: Subscription) -> str | None:
         renewal = obj.get_next_renewal()
         if renewal:
             return renewal.isoformat()
