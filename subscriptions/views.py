@@ -276,3 +276,58 @@ class PaymobWebhookView(APIView):
                 {'error': f'Failed to upgrade user: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# ------------------------------------------------------------------ #
+#  Verify payment (called by the Flutter app with JWT)               #
+# ------------------------------------------------------------------ #
+
+class VerifyPaymentView(APIView):
+    """
+    POST /api/subscriptions/verify-payment/
+
+    Called by the Flutter app after the user completes a Paymob payment.
+    The user is already authenticated with JWT, so we know who they are.
+
+    Expected JSON body:
+    {
+        "transaction_id": "458534320"
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer('VerifyPaymentRequest', fields={
+            'transaction_id': drf_serializers.CharField(help_text='Paymob transaction ID'),
+        }),
+        responses={
+            200: inline_serializer('VerifyPaymentResponse', fields={
+                'status': drf_serializers.CharField(),
+                'plan': drf_serializers.CharField(),
+            }),
+        },
+    )
+    def post(self, request):
+        transaction_id = request.data.get('transaction_id', '')
+
+        if not transaction_id:
+            return Response(
+                {'error': 'Missing transaction_id.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Upgrade the authenticated user to PRO
+        subscription, _ = Subscription.objects.get_or_create(
+            user=request.user,
+            defaults={'plan': 'FREE'},
+        )
+        subscription.plan = 'PRO'
+        subscription.paymob_order_id = str(transaction_id)
+        subscription.save(update_fields=['plan', 'paymob_order_id', 'updated_at'])
+
+        logger.info('User %s upgraded to PRO via verify-payment, txn=%s', request.user.email, transaction_id)
+        return Response({
+            'status': 'user upgraded to PRO',
+            'plan': 'PRO',
+        }, status=status.HTTP_200_OK)
+
