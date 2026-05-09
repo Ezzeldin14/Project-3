@@ -193,22 +193,17 @@ class ResetPasswordView(APIView):
     
 
 class GoogleContinueView(APIView):
-
-    def get_tokens_for_user(self, user):
-        refresh = RefreshToken.for_user(user)
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }
+    permission_classes = [AllowAny]
 
     @extend_schema(
         request=GoogleLoginSerializer,
         responses={200: inline_serializer('GoogleLoginResponse', fields={
             'message': drf_serializers.CharField(),
-            'user_id': drf_serializers.IntegerField(),
-            'verified': drf_serializers.BooleanField(),
-            'access': drf_serializers.CharField(),
-            'refresh': drf_serializers.CharField(),
+            'user': UserSerializer(),
+            'tokens': inline_serializer('GoogleTokens', fields={
+                'access': drf_serializers.CharField(),
+                'refresh': drf_serializers.CharField(),
+            }),
         })},
     )
     def post(self, request):
@@ -244,14 +239,15 @@ class GoogleContinueView(APIView):
                 user.save()
 
             # Generate tokens
-            tokens = self.get_tokens_for_user(user)
+            refresh = RefreshToken.for_user(user)
 
             return Response({
                 "message": "Login successful",
-                "user_id": user.id,
-                "verified": user.is_verified,
-                "access": tokens["access"],
-                "refresh": tokens["refresh"],
+                "user": UserSerializer(user).data,
+                "tokens": {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                },
             })
 
         except User.DoesNotExist:
@@ -274,12 +270,14 @@ class GoogleContinueView(APIView):
             user.save()
 
             # Generate tokens
-            tokens = self.get_tokens_for_user(user)
+            refresh = RefreshToken.for_user(user)
 
             return Response({
                 "message": "User created and logged in",
-                "user_id": user.id,
-                "verified": True,
-                "access": tokens["access"],
-                "refresh": tokens["refresh"],
+                "user": UserSerializer(user).data,
+                "tokens": {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                },
             }, status=201)
+
