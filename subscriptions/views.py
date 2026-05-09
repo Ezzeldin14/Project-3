@@ -168,10 +168,13 @@ class PaymobWebhookView(APIView):
         },
     )
     def post(self, request):
+        logger.info('Paymob webhook received.')
+
         # Parse raw body
         try:
             payload = json.loads(request.body)
         except (json.JSONDecodeError, TypeError):
+            logger.error('Paymob webhook: invalid JSON payload.')
             return Response(
                 {'error': 'Invalid JSON payload.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -181,6 +184,7 @@ class PaymobWebhookView(APIView):
         received_hmac = payload.get('hmac', '')
 
         if not txn or not received_hmac:
+            logger.error('Paymob webhook: missing "obj" or "hmac".')
             return Response(
                 {'error': 'Missing "obj" or "hmac" in request body.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -194,15 +198,21 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        logger.info('Paymob webhook: HMAC verified OK.')
+
         # ---- Check payment success ----
         success = txn.get('success', False)
+        logger.info('Paymob webhook: success=%s (type=%s), txn id=%s', success, type(success).__name__, txn.get('id'))
+
         if not success:
-            logger.info('Paymob webhook: payment not successful, txn id=%s', txn.get('id'))
+            logger.info('Paymob webhook: payment not successful, ignoring.')
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
         # ---- Identify the user by email ----
         billing_data = txn.get('billing_data', {}) or {}
         user_email = billing_data.get('email', '')
+
+        logger.info('Paymob webhook: billing_data.email=%s', user_email)
 
         if not user_email:
             logger.error('Paymob webhook: no email in billing_data, txn id=%s', txn.get('id'))
@@ -220,16 +230,27 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        logger.info('Paymob webhook: found user %s (id=%s)', user_email, user.id)
+
         # ---- Upgrade to PRO ----
-        subscription, _ = Subscription.objects.get_or_create(
-            user=user,
-            defaults={'plan': 'FREE'},
-        )
-        order_id = str(_resolve(txn, 'order.id'))
-        subscription.plan = 'PRO'
-        subscription.paymob_order_id = order_id
-        subscription.save(update_fields=['plan', 'paymob_order_id', 'updated_at'])
+        try:
+            subscription, created = Subscription.objects.get_or_create(
+                user=user,
+                defaults={'plan': 'FREE'},
+            )
+            logger.info('Paymob webhook: subscription plan=%s, created=%s', subscription.plan, created)
 
-        logger.info('User %s upgraded to PRO via Paymob order %s', user_email, order_id)
-        return Response({'status': 'user upgraded to PRO'}, status=status.HTTP_200_OK)
+            order_id = str(_resolve(txn, 'order.id'))
+            subscription.plan = 'PRO'
+            subscription.paymob_order_id = order_id
+            subscription.save(update_fields=['plan', 'paymob_order_id', 'updated_at'])
 
+            logger.info('User %s upgraded to PRO via Paymob order %s', user_email, order_id)
+            return Response({'status': 'user upgraded to PRO'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception('Paymob webhook: failed to upgrade user %s: %s', user_email, str(e))
+            return Response(
+                {'error': f'Failed to upgrade user: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
