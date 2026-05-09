@@ -222,19 +222,16 @@ class PaymobWebhookView(APIView):
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
         # ---- Identify the user ----
-        # Paymob puts billing_data inside order.billing_data (NOT txn.billing_data)
+        # Paymob puts the email in shipping_data and payment_key_claims, NOT order.billing_data
         order_data = txn.get('order', {}) or {}
-        billing_data = order_data.get('billing_data', {}) or {}
+        shipping_data = order_data.get('shipping_data', {}) or {}
+        payment_claims = txn.get('payment_key_claims', {}) or {}
+        claims_billing = payment_claims.get('billing_data', {}) or {}
 
-        # Fallback: also check txn-level billing_data
-        if not billing_data:
-            billing_data = txn.get('billing_data', {}) or {}
-
-        logger.error('Paymob webhook: billing_data=%s', billing_data)
-
-        # Try email from billing_data, then merchant_order_id as fallback
+        # Try email from multiple locations where Paymob puts it
         user_email = (
-            billing_data.get('email', '')
+            shipping_data.get('email', '')
+            or claims_billing.get('email', '')
             or order_data.get('merchant_order_id', '')
             or txn.get('merchant_order_id', '')
         )
