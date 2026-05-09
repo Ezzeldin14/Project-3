@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'users',
     'subscriptions',
     'images',
-    'payments',
+
     'user_history',
     'Ai_processing',
     'drf_spectacular',
@@ -234,10 +234,6 @@ else:
     DEFAULT_FROM_EMAIL = "noreply@pixelrevive.com"
 
 
-# ---------- Stripe (payment gateway) ----------
-STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
-STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
-STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
-# Override these if your app uses deep links or a custom domain
-STRIPE_SUCCESS_URL = os.getenv('STRIPE_SUCCESS_URL', '')
-STRIPE_CANCEL_URL = os.getenv('STRIPE_CANCEL_URL', '')
+# ---------- Paymob (payment gateway) ----------
+PAYMOB_HMAC_SECRET = os.getenv('PAYMOB_HMAC_SECRET', '')
+

@@ -80,7 +80,7 @@ class ProcessImageView(APIView):
                         "plan": subscription.plan,
                         "remaining_uses": 0,
                         "next_renewal": renewal_str,
-                        "upgrade_hint": "Upgrade to PRO for unlimited access via POST /api/payments/create-checkout-session/",
+                        "upgrade_hint": "Upgrade to PRO for unlimited access.",
                     },
                     status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )

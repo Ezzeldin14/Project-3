@@ -27,7 +27,6 @@ urlpatterns = [
     path('api/processing/', include('Ai_processing.urls')),
     path('api/history/', include('user_history.urls')),
     path('api/subscriptions/', include('subscriptions.urls')),
-    path('api/payments/', include('payments.urls')),
 
     # Swagger / OpenAPI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

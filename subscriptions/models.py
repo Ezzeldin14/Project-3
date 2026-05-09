@@ -36,9 +36,8 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Stripe identifiers (populated when user upgrades to PRO)
-    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
-    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
+    # Paymob identifier (populated when user upgrades to PRO via payment)
+    paymob_order_id = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         db_table = 'subscriptions'

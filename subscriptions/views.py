@@ -1,11 +1,24 @@
+import hashlib
+import hmac
+import json
+import logging
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers as drf_serializers
 
 from .models import Subscription
 from .serializers import SubscriptionSerializer, UsageRecordSerializer
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class SubscriptionStatusView(APIView):
@@ -40,3 +53,165 @@ class UsageHistoryView(APIView):
         records = request.user.usage_records.all()[:20]
         serializer = UsageRecordSerializer(records, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ------------------------------------------------------------------ #
+#  Paymob transaction webhook                                        #
+# ------------------------------------------------------------------ #
+
+# The 21 fields Paymob includes in the HMAC calculation, in order.
+HMAC_FIELDS = [
+    'amount_cents',
+    'created_at',
+    'currency',
+    'error_occured',
+    'has_parent_transaction',
+    'id',
+    'integration_id',
+    'is_3d_secure',
+    'is_auth',
+    'is_capture',
+    'is_refunded',
+    'is_standalone_payment',
+    'is_voided',
+    'order.id',
+    'owner',
+    'pending',
+    'source_data.pan',
+    'source_data.sub_type',
+    'source_data.type',
+    'success',
+]
+
+
+def _resolve(data: dict, dotted_key: str):
+    """Resolve a dotted key like 'order.id' from a nested dict."""
+    keys = dotted_key.split('.')
+    value = data
+    for k in keys:
+        if isinstance(value, dict):
+            value = value.get(k, '')
+        else:
+            return ''
+    return value
+
+
+def _verify_hmac(txn_data: dict, received_hmac: str) -> bool:
+    """
+    Build the concatenated string from the transaction object,
+    compute HMAC-SHA512 with the Paymob secret, and compare.
+    """
+    secret = getattr(settings, 'PAYMOB_HMAC_SECRET', '')
+    if not secret:
+        logger.error('PAYMOB_HMAC_SECRET is not configured.')
+        return False
+
+    concatenated = ''.join(str(_resolve(txn_data, field)) for field in HMAC_FIELDS)
+
+    computed = hmac.new(
+        key=secret.encode('utf-8'),
+        msg=concatenated.encode('utf-8'),
+        digestmod=hashlib.sha512,
+    ).hexdigest()
+
+    return hmac.compare_digest(computed, received_hmac)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PaymobWebhookView(APIView):
+    """
+    POST /api/subscriptions/paymob-webhook/
+
+    Called by Paymob servers after a payment is processed.
+    Verifies the HMAC signature and upgrades the user to PRO.
+
+    Paymob sends:
+    {
+        "obj": { ... transaction data ... },
+        "hmac": "xxxxxxx"
+    }
+
+    The user is identified by billing_data.email inside the
+    transaction object. The frontend must pass the user's
+    registered email when creating the Paymob payment.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        request=inline_serializer('PaymobWebhookRequest', fields={
+            'obj': drf_serializers.DictField(),
+            'hmac': drf_serializers.CharField(),
+        }),
+        responses={
+            200: inline_serializer('PaymobWebhookResponse', fields={
+                'status': drf_serializers.CharField(),
+            }),
+        },
+    )
+    def post(self, request):
+        # Parse raw body
+        try:
+            payload = json.loads(request.body)
+        except (json.JSONDecodeError, TypeError):
+            return Response(
+                {'error': 'Invalid JSON payload.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        txn = payload.get('obj', {})
+        received_hmac = payload.get('hmac', '')
+
+        if not txn or not received_hmac:
+            return Response(
+                {'error': 'Missing "obj" or "hmac" in request body.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ---- Verify HMAC ----
+        if not _verify_hmac(txn, received_hmac):
+            logger.warning('Paymob webhook HMAC verification failed.')
+            return Response(
+                {'error': 'Invalid HMAC signature.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # ---- Check payment success ----
+        success = txn.get('success', False)
+        if not success:
+            logger.info('Paymob webhook: payment not successful, txn id=%s', txn.get('id'))
+            return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
+
+        # ---- Identify the user by email ----
+        billing_data = txn.get('billing_data', {}) or {}
+        user_email = billing_data.get('email', '')
+
+        if not user_email:
+            logger.error('Paymob webhook: no email in billing_data, txn id=%s', txn.get('id'))
+            return Response(
+                {'error': 'Cannot identify user — no email in billing_data.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(email=user_email)
+        except User.DoesNotExist:
+            logger.error('Paymob webhook: user %s not found, txn id=%s', user_email, txn.get('id'))
+            return Response(
+                {'error': f'User with email {user_email} not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # ---- Upgrade to PRO ----
+        subscription, _ = Subscription.objects.get_or_create(
+            user=user,
+            defaults={'plan': 'FREE'},
+        )
+        order_id = str(_resolve(txn, 'order.id'))
+        subscription.plan = 'PRO'
+        subscription.paymob_order_id = order_id
+        subscription.save(update_fields=['plan', 'paymob_order_id', 'updated_at'])
+
+        logger.info('User %s upgraded to PRO via Paymob order %s', user_email, order_id)
+        return Response({'status': 'user upgraded to PRO'}, status=status.HTTP_200_OK)
+
