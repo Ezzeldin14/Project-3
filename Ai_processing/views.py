@@ -76,7 +76,7 @@ class ProcessImageView(APIView):
                 renewal_str = next_renewal.isoformat() if next_renewal else 'unknown'
                 return Response(
                     {
-                        "error": "Free plan quota exceeded. You have used all 2 AI processing slots in this 2-day window.",
+                        "error": "You exceeded your daily limit.",
                         "plan": subscription.plan,
                         "remaining_uses": 0,
                         "next_renewal": renewal_str,
