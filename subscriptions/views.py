@@ -15,7 +15,12 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as drf_serializers
 
 from .models import Subscription
-from .serializers import SubscriptionSerializer, UsageRecordSerializer
+from .serializers import (
+    PaymobWebhookResponseSerializer,
+    SubscriptionSerializer,
+    UsageRecordSerializer,
+    VerifyPaymentResponseSerializer,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -59,21 +64,21 @@ class UsageHistoryView(APIView):
 #  Paymob transaction webhook                                        #
 # ------------------------------------------------------------------ #
 
-# The 21 fields Paymob includes in the HMAC calculation, in order.
+# The 20 fields Paymob includes in the HMAC calculation (lexicographic order).
+# See: https://developers.paymob.com/paymob-docs/developers/webhook-callbacks-and-hmac/hmac/hmac-transaction-callback
 HMAC_FIELDS = [
     'amount_cents',
     'created_at',
     'currency',
     'error_occured',
     'has_parent_transaction',
-    'id',
+    'id',  # obj.id for POST processed callbacks (we pass payload['obj'])
     'integration_id',
     'is_3d_secure',
     'is_auth',
     'is_capture',
     'is_refunded',
     'is_standalone_payment',
-    'is_void',
     'is_voided',
     'order.id',
     'owner',
@@ -162,13 +167,10 @@ class PaymobWebhookView(APIView):
             }),
             'hmac': drf_serializers.CharField(help_text='Security signature from Paymob'),
         }),
-        responses={
-            200: drf_serializers.DictField(),
-        },
+        responses={200: PaymobWebhookResponseSerializer},
     )
     def post(self, request):
-        # Log the FULL raw request body to see exactly what Paymob sends
-        logger.error('Paymob webhook received. RAW BODY=%s', request.body.decode('utf-8', errors='replace')[:5000])
+        logger.debug('Paymob webhook received. RAW BODY=%s', request.body.decode('utf-8', errors='replace')[:5000])
 
         # Parse raw body
         try:
@@ -180,8 +182,8 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logger.error('Paymob webhook: payload keys=%s', list(payload.keys()))
-        logger.error('Paymob webhook: query params=%s', dict(request.query_params))
+        logger.debug('Paymob webhook: payload keys=%s', list(payload.keys()))
+        logger.debug('Paymob webhook: query params=%s', dict(request.query_params))
 
         # HMAC can be in query params (?hmac=xxx) or in the JSON body
         received_hmac = (
@@ -210,14 +212,14 @@ class PaymobWebhookView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        logger.error('Paymob webhook: HMAC verified OK.')
+        logger.info('Paymob webhook: HMAC verified OK.')
 
         # ---- Check payment success ----
         success = txn.get('success', False)
-        logger.error('Paymob webhook: success=%s (type=%s), txn id=%s', success, type(success).__name__, txn.get('id'))
+        logger.info('Paymob webhook: success=%s, txn id=%s', success, txn.get('id'))
 
         if not success:
-            logger.error('Paymob webhook: payment not successful, ignoring.')
+            logger.info('Paymob webhook: payment not successful, ignoring.')
             return Response({'status': 'ignored (not successful)'}, status=status.HTTP_200_OK)
 
         # ---- Identify the user ----
@@ -239,7 +241,7 @@ class PaymobWebhookView(APIView):
         if user_email == 'NA':
             user_email = ''
 
-        logger.error('Paymob webhook: resolved user_email=%s', user_email)
+        logger.info('Paymob webhook: resolved user_email=%s', user_email)
 
         if not user_email:
             logger.error('Paymob webhook: cannot identify user, txn id=%s', txn.get('id'))
@@ -305,9 +307,7 @@ class VerifyPaymentView(APIView):
         request=inline_serializer('VerifyPaymentRequest', fields={
             'transaction_id': drf_serializers.CharField(help_text='Paymob transaction ID'),
         }),
-        responses={
-            200: drf_serializers.DictField(),
-        },
+        responses={200: VerifyPaymentResponseSerializer},
     )
     def post(self, request):
         transaction_id = request.data.get('transaction_id', '')

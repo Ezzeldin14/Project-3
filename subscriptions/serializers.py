@@ -40,3 +40,11 @@ class UsageRecordSerializer(serializers.ModelSerializer):
         model = UsageRecord
         fields = ('feature', 'used_at')
         read_only_fields = fields
+
+class PaymobWebhookResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class VerifyPaymentResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    plan = serializers.CharField()
