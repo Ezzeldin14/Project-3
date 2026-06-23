@@ -163,9 +163,7 @@ class PaymobWebhookView(APIView):
             'hmac': drf_serializers.CharField(help_text='Security signature from Paymob'),
         }),
         responses={
-            200: inline_serializer('PaymobWebhookResponse', fields={
-                'status': drf_serializers.CharField(),
-            }),
+            200: drf_serializers.DictField(),
         },
     )
     def post(self, request):
@@ -308,10 +306,7 @@ class VerifyPaymentView(APIView):
             'transaction_id': drf_serializers.CharField(help_text='Paymob transaction ID'),
         }),
         responses={
-            200: inline_serializer('VerifyPaymentResponse', fields={
-                'status': drf_serializers.CharField(),
-                'plan': drf_serializers.CharField(),
-            }),
+            200: drf_serializers.DictField(),
         },
     )
     def post(self, request):
