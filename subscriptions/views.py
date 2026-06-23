@@ -73,6 +73,7 @@ HMAC_FIELDS = [
     'is_capture',
     'is_refunded',
     'is_standalone_payment',
+    'is_void',
     'is_voided',
     'order.id',
     'owner',
